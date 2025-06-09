@@ -1,0 +1,22 @@
+/* FILE: src/main/resources/META-INF/resources/themes/upravnik-predstavnik/styles.css */
+
+body {
+    /* Naloži sliko iz mape images */
+    background-image: url('images/background.png');
+
+    /* Poskrbi, da slika pokrije celotno ozadje */
+    background-size: cover;
+
+    /* Centrira sliko */
+    background-position: center center;
+
+    /* Prepreči ponavljanje slike */
+    background-repeat: no-repeat;
+
+    /* Fiksira ozadje, da se ne premika med drsenjem vsebine */
+    background-attachment: fixed;
+
+    /* Poskrbi, da višina telesa zasede celoten zaslon */
+    height: 100vh;
+    margin: 0;
+}

@@ -1,0 +1,38 @@
+# -------------------------------------------
+# SPRING BOOT APLIKACIJA
+# -------------------------------------------
+server:
+  port: 8888
+
+spring:
+  # MongoDB Connection
+  data:
+    mongodb:
+      uri: mongodb://localhost:27018/building_management
+
+  # Google OAuth2 Client Configuration
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}       # <-- VSTAVI SVOJ CLIENT ID
+            client-secret: ${GOOGLE_CLIENT_SECRET} # <-- VSTAVI SVOJ CLIENT SECRET
+            scope:
+              - openid
+              - profile
+              - email
+
+  # Internacionalizacija (i18n)
+  messages:
+    basename: i18n/messages
+
+# -------------------------------------------
+# VAADIN
+# -------------------------------------------
+vaadin:
+  launch-browser: true
+# To improve the performance during development.
+  # For more information https://vaadin.com/docs/latest/flow/integrations/spring/configuration#special-configuration-parameters
+  allowed-packages: com.vaadin,org.vaadin,com.flowingcode,net.urosk.upravnikpredstavnik
+
