@@ -20,3 +20,21 @@ body {
     height: 100vh;
     margin: 0;
 }
+
+
+
+.kanban-column {
+    min-width: 320px;
+}
+.kanban-card {
+    cursor: grab;
+    border-top: 5px solid transparent;
+    transition: box-shadow 0.2s;
+    background-color: var(--lumo-base-color);
+}
+.kanban-card:hover {
+    box-shadow: var(--lumo-box-shadow-m);
+}
+.status-predlog { border-top-color: var(--lumo-primary-color-50pct); }
+.status-v-delu { border-top-color: var(--lumo-warning-color); }
+.status-zakljuceno { border-top-color: var(--lumo-success-color); }

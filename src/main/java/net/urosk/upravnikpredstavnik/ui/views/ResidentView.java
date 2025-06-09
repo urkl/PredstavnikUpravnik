@@ -5,15 +5,15 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
-@Route(value = "/resident", layout = MainLayout.class) // Privzeta stran po prijavi
+@Route(value = "", layout = MainLayout.class) // <-- POPRAVI NAZAJ NA prazen niz ""
 @PageTitle("Moje Zadeve")
-// --- SPREMEMBA TUKAJ: Dovolimo dostop vsem prijavljenim vlogam ---
-@RolesAllowed({"STANOVALEC", "UPRAVNIK", "PREDSTAVNIK"})
+@PermitAll
 public class ResidentView extends VerticalLayout {
 
     private final CaseRepository caseRepository;
