@@ -4,11 +4,12 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "/", layout = MainLayout.class) // Privzeta stran po prijavi
 @PageTitle("Domov")
-@AnonymousAllowed
+@PermitAll
 public class HomeView extends VerticalLayout {
 
     public HomeView() {

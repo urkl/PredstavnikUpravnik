@@ -1,4 +1,4 @@
-// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/views/ManagerKanbanView.java
+// FINALNA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/ui/views/ManagerKanbanView.java
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.html.H3;
@@ -6,16 +6,18 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.annotation.security.RolesAllowed; // <-- Pravi import
 import net.urosk.upravnikpredstavnik.data.Status;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 
 @Route(value = "kanban", layout = MainLayout.class)
 @PageTitle("Kanban Pregled")
+// --- SPREMEMBA TUKAJ: Vrnemo se na @RolesAllowed ---
 @RolesAllowed({"UPRAVNIK", "PREDSTAVNIK"})
 public class ManagerKanbanView extends HorizontalLayout {
 
+    // ... ostala koda ostane nespremenjena ...
     private final CaseRepository caseRepository;
 
     public ManagerKanbanView(CaseRepository caseRepository) {
@@ -23,7 +25,6 @@ public class ManagerKanbanView extends HorizontalLayout {
         setSizeFull();
         setSpacing(true);
 
-        // Ustvari stolpce za vsak status
         for (Status status : Status.values()) {
             add(createStatusColumn(status));
         }
@@ -34,7 +35,6 @@ public class ManagerKanbanView extends HorizontalLayout {
         column.setSpacing(true);
         column.add(new H3(status.name().replace("_", " ")));
 
-        // Poišči zadeve za ta status in jih prikaži kot kartice
         caseRepository.findByStatus(status).forEach(caseItem -> {
             column.add(createCaseCard(caseItem));
         });

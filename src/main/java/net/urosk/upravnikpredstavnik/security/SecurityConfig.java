@@ -1,4 +1,4 @@
-// KONČNA VERZIJA PO VZORU DELUJOČEGA PRIMERA
+// FINALNA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/SecurityConfig.java
 package net.urosk.upravnikpredstavnik.security;
 
 import com.vaadin.flow.spring.security.VaadinWebSecurity;
@@ -9,17 +9,17 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 
 @EnableWebSecurity
 @Configuration
+// @EnableMethodSecurity // Ta anotacija ni več potrebna
 public class SecurityConfig extends VaadinWebSecurity {
 
-    private final CustomAuthenticationSuccessHandler successHandler;
+    private final CustomOAuth2UserService customOAuth2UserService;
 
-    public SecurityConfig(CustomAuthenticationSuccessHandler successHandler) {
-        this.successHandler = successHandler;
+    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService) {
+        this.customOAuth2UserService = customOAuth2UserService;
     }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        // Dovoli dostop do statičnih virov
         http.authorizeHttpRequests(auth -> auth.requestMatchers(
                 "/images/**",
                 "/themes/**"
@@ -27,9 +27,10 @@ public class SecurityConfig extends VaadinWebSecurity {
 
         super.configure(http);
 
-        // Uporabimo nov pristop s 'successHandler'
         http.oauth2Login(oauth2 -> oauth2
-                .successHandler(this.successHandler)
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(this.customOAuth2UserService)
+                )
         );
 
         setLoginView(http, LoginView.class, "/logout");

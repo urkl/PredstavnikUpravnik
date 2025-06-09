@@ -1,4 +1,4 @@
-// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/views/ResidentView.java
+// POSODOBLJENA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/ui/views/ResidentView.java
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.grid.Grid;
@@ -12,7 +12,8 @@ import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
 @Route(value = "/resident", layout = MainLayout.class) // Privzeta stran po prijavi
 @PageTitle("Moje Zadeve")
-@RolesAllowed("STANOVALEC")
+// --- SPREMEMBA TUKAJ: Dovolimo dostop vsem prijavljenim vlogam ---
+@RolesAllowed({"STANOVALEC", "UPRAVNIK", "PREDSTAVNIK"})
 public class ResidentView extends VerticalLayout {
 
     private final CaseRepository caseRepository;

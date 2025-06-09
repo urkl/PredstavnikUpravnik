@@ -30,7 +30,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
 
         Anchor loginLink = new Anchor(OAUTH_URL, "Prijava z Google računom");
 
-        // --- KLJUČNA SPREMEMBA JE TUKAJ ---
+
         loginLink.setRouterIgnore(true); // To pove Vaadinu, naj ne upravlja te povezave
         // ------------------------------------
 

@@ -53,6 +53,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return userRepository.save(newUser);
         });
 
-        return oauthUser;
+        return new CustomOAuth2User(oauthUser, userOptional.get());
+
     }
 }
