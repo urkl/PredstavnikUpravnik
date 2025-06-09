@@ -10,7 +10,7 @@ import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
-@Route(value = "", layout = MainLayout.class) // Privzeta stran po prijavi
+@Route(value = "/resident", layout = MainLayout.class) // Privzeta stran po prijavi
 @PageTitle("Moje Zadeve")
 @RolesAllowed("STANOVALEC")
 public class ResidentView extends VerticalLayout {

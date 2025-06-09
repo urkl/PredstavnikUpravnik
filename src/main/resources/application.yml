@@ -1,8 +1,11 @@
+app:
+  admin-email: uros.kristan@gmail.com
+
 # -------------------------------------------
 # SPRING BOOT APLIKACIJA
 # -------------------------------------------
 server:
-  port: 8888
+  port: 8080
 
 spring:
   # MongoDB Connection
@@ -36,3 +39,20 @@ vaadin:
   # For more information https://vaadin.com/docs/latest/flow/integrations/spring/configuration#special-configuration-parameters
   allowed-packages: com.vaadin,org.vaadin,com.flowingcode,net.urosk.upravnikpredstavnik
 
+# -------------------------------------------
+# BELEŽENJE (LOGGING)
+# -------------------------------------------
+logging:
+  level:
+    # Povečaj raven beleženja za tvojo aplikacijo na DEBUG, da vidiš več podrobnosti
+    net.urosk.upravnikpredstavnik: DEBUG
+
+    # To je KLJUČNO za odpravljanje napak pri prijavi in varnosti!
+    # Prikazalo bo delovanje vseh Spring Security filtrov.
+    org.springframework.security: DEBUG
+
+    # Uporabno za preverjanje poizvedb v MongoDB
+    org.springframework.data.mongodb: DEBUG
+
+    # Za podrobnejše izpise iz Vaadin ogrodja
+    com.vaadin: DEBUG
