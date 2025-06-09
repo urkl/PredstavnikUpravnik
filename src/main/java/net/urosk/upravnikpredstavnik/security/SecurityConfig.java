@@ -1,4 +1,4 @@
-// KONČNA POPRAVLJENA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/SecurityConfig.java
+// ZAMENJAJ CELOTNO DATOTEKO S TO VSEBINO
 package net.urosk.upravnikpredstavnik.security;
 
 import com.vaadin.flow.spring.security.VaadinWebSecurity;
@@ -10,15 +10,13 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-
 @EnableWebSecurity
 @Configuration
 public class SecurityConfig extends VaadinWebSecurity {
 
-    // 1. Dodamo privatno polje za naš custom servis
     private final CustomOAuth2UserService customOAuth2UserService;
 
-    // 2. Ustvarimo konstruktor, preko katerega bo Spring sam vbrizgal naš servis
+    // Ali ta konstruktor obstaja?
     public SecurityConfig(CustomOAuth2UserService customOAuth2UserService) {
         this.customOAuth2UserService = customOAuth2UserService;
     }
@@ -30,21 +28,25 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        // Popravek zastarelega AntPathRequestMatcher
+        // Dovoli dostop do statičnih virov
         http.authorizeHttpRequests(auth -> auth.requestMatchers(
                 "/images/**",
                 "/themes/**"
         ).permitAll());
 
-        super.configure(http);
 
-        // 3. Uporabimo že vbrizgan servis, namesto da ga iščemo ročno
+
+        // --- TUKAJ JE KLJUČNI DEL, KI JE MANJKAL ---
+        // S tem Springu povemo, naj za OAuth2 prijavo uporabi naš servis po meri.
         http.oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo
                         .userService(this.customOAuth2UserService)
                 )
         );
+        // ------------------------------------------------
 
         setLoginView(http, LoginView.class, "/logout");
+
+        super.configure(http);
     }
 }

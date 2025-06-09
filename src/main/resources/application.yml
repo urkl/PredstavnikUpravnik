@@ -8,6 +8,7 @@ server:
   port: 8080
 
 spring:
+
   # MongoDB Connection
   data:
     mongodb:
@@ -45,14 +46,14 @@ vaadin:
 logging:
   level:
     # Povečaj raven beleženja za tvojo aplikacijo na DEBUG, da vidiš več podrobnosti
-    net.urosk.upravnikpredstavnik: DEBUG
+    net.urosk.upravnikpredstavnik: INFO
 
     # To je KLJUČNO za odpravljanje napak pri prijavi in varnosti!
     # Prikazalo bo delovanje vseh Spring Security filtrov.
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
 
     # Uporabno za preverjanje poizvedb v MongoDB
-    org.springframework.data.mongodb: DEBUG
+    org.springframework.data.mongodb: INFO
 
     # Za podrobnejše izpise iz Vaadin ogrodja
-    com.vaadin: DEBUG
+    com.vaadin: INFO
