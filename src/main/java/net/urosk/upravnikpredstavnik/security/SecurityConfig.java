@@ -1,4 +1,4 @@
-// FINALNA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/SecurityConfig.java
+// KONČNA POPRAVLJENA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/SecurityConfig.java
 package net.urosk.upravnikpredstavnik.security;
 
 import com.vaadin.flow.spring.security.VaadinWebSecurity;
@@ -6,16 +6,18 @@ import net.urosk.upravnikpredstavnik.ui.views.LoginView;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
 @EnableWebSecurity
 @Configuration
-// @EnableMethodSecurity // Ta anotacija ni več potrebna
 public class SecurityConfig extends VaadinWebSecurity {
 
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final UserDetailsService userDetailsService;
 
-    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService) {
+    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService, UserDetailsService userDetailsService) {
         this.customOAuth2UserService = customOAuth2UserService;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
@@ -28,10 +30,18 @@ public class SecurityConfig extends VaadinWebSecurity {
         super.configure(http);
 
         http.oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo
-                        .userService(this.customOAuth2UserService)
+                        // --- DODAJ TO VRSTICO ---
+                        .loginPage("/login") // Eksplicitno povemo, kje je naša prijavna stran
+
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(this.customOAuth2UserService)
+                        )
                 )
-        );
+                .rememberMe(rememberMe -> rememberMe
+                        .userDetailsService(this.userDetailsService)
+                        .key("neka-zelo-dolga-in-varna-skrivna-vrednost")
+                        .tokenValiditySeconds(86400 * 14)
+                );
 
         setLoginView(http, LoginView.class, "/logout");
     }

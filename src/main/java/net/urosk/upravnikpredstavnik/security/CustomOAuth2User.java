@@ -1,4 +1,4 @@
-// FINALNA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2User.java
+// PREDLAGANA POSODOBITEV: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2User.java
 package net.urosk.upravnikpredstavnik.security;
 
 import org.springframework.security.core.GrantedAuthority;
@@ -26,9 +26,11 @@ public class CustomOAuth2User implements OAuth2User {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // --- SPREMEMBA TUKAJ: Odstranimo predpono "ROLE_" ---
-        // Sedaj ustvarimo vlogo z imenom, ki ga @RolesAllowed pričakuje (npr. "PREDSTAVNIK").
-        return Collections.singletonList(new SimpleGrantedAuthority(appUser.getRole().name()));
+        // --- POPRAVEK TUKAJ: Dodamo predpono "ROLE_" ---
+        // Anotacije, kot je @RolesAllowed, pričakujejo, da ima vloga predpono "ROLE_".
+        // Primer: Role.PREDSTAVNIK postane "ROLE_PREDSTAVNIK".
+        String roleName = "ROLE_" + appUser.getRole().name();
+        return Collections.singletonList(new SimpleGrantedAuthority(roleName));
     }
 
     @Override

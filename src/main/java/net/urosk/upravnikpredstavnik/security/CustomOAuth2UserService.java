@@ -23,13 +23,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         this.userRepository = userRepository;
     }
 
+// PREDLAGANA SPREMEMBA ZA DIAGNOSTIKO: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2UserService.java
+
+// ... (ostala koda ostane enaka) ...
+
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oauthUser = super.loadUser(userRequest);
         String email = oauthUser.getAttribute("email");
 
-        // PRAVILNA LOGIKA: Rezultat operacije shranimo v 'appUser'.
-        // Ta spremenljivka bo vedno vsebovala ali obstoječega ali na novo ustvarjenega uporabnika.
         User appUser = userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     System.out.println("!!! Uporabnik z emailom " + email + " ne obstaja. Ustvarjam novega... !!!");
@@ -43,10 +45,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     } else {
                         newUser.setRole(Role.STANOVALEC);
                     }
-                    return userRepository.save(newUser);
+
+                    // Shranimo novega uporabnika
+                    User savedUser = userRepository.save(newUser);
+
+                    // --- DODAJ TA IZPIS ZA PREVERJANJE ---
+                    System.out.println("!!! USPEŠNO SHRANJEN NOV UPORABNIK Z ID-JEM: " + savedUser.getId() + " !!!");
+                    // --- KONEC DODATKA ---
+
+                    return savedUser;
                 });
 
-        // Sedaj 'appUser' ne more biti null in ga lahko varno uporabimo.
         return new CustomOAuth2User(oauthUser, appUser);
     }
 }

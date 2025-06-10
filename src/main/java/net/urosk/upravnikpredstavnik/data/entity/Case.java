@@ -25,7 +25,9 @@ public class Case {
     private User assignedTo;
     private List<Comment> comments = new ArrayList<>();
     private List<Subtask> subtasks = new ArrayList<>();
-    private List<String> fileIds = new ArrayList<>();
+    private List<AttachedFile> attachedFiles = new ArrayList<>();
+
     private LocalDateTime createdDate;
     private LocalDateTime lastModifiedDate;
+
 }

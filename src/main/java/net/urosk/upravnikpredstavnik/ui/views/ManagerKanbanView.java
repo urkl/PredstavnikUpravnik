@@ -1,6 +1,8 @@
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.card.Card;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dnd.DragSource;
@@ -100,9 +102,30 @@ public class ManagerKanbanView extends HorizontalLayout {
         card.setWidth("300px");
         card.addClassName("kanban-card");
 
+        // --- ZAČETEK POPRAVKA: Pravilna umestitev gumba v glavo kartice ---
+
+        // 1. Ustvarimo naslov in gumb, tako kot prej.
         Span title = new Span(caseItem.getTitle());
         title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
 
+        Button editButton = new Button(new Icon(VaadinIcon.EXTERNAL_LINK));
+        editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        editButton.getElement().getStyle().set("margin-left", "auto"); // To potisne gumb skrajno desno.
+        editButton.setTooltipText("Uredi zadevo");
+        editButton.addClickListener(e -> UI.getCurrent().navigate(CaseDetailView.class, caseItem.getId()));
+
+        // 2. Združimo naslov in gumb v HorizontalLayout.
+        HorizontalLayout cardHeader = new HorizontalLayout(title, editButton);
+        cardHeader.setWidthFull();
+        cardHeader.setAlignItems(Alignment.CENTER);
+
+        // 3. KLJUČNI DEL: Celoten HorizontalLayout nastavimo kot NASLOV kartice.
+        card.setTitle(cardHeader);
+
+        // --- KONEC POPRAVKA ---
+
+
+        // Vsa ostala koda ostane nespremenjena, kot v tvoji originalni verziji.
         Span description = new Span(caseItem.getDescription());
         description.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.Top.SMALL);
 
@@ -128,13 +151,11 @@ public class ManagerKanbanView extends HorizontalLayout {
             });
         }
 
-        // Gumb za odpiranje vnosnega polja
         Button toggleAddSubtaskBtn = new Button(new Icon(VaadinIcon.PLUS_CIRCLE));
         toggleAddSubtaskBtn.getElement().getStyle().set("margin-top", "0.5rem");
         toggleAddSubtaskBtn.getElement().getStyle().set("padding", "0.2rem");
         toggleAddSubtaskBtn.setTooltipText("Dodaj podnalogo");
 
-        // Vnosno polje + potrditveni gumb (privzeto skrito)
         TextField newSubtaskField = new TextField();
         newSubtaskField.setPlaceholder("Nova podnaloga");
         newSubtaskField.setWidth("150px");
@@ -175,7 +196,7 @@ public class ManagerKanbanView extends HorizontalLayout {
             }
         });
 
-        card.setTitle(title);
+        // Naslov ni več tukaj, ker smo ga nastavili zgoraj s setTitle.
         card.add(description, timeInfo, subtaskLayout, toggleAddSubtaskBtn, addSubtaskRow, authorInfo);
         addStatusTheme(card, caseItem.getStatus());
         return card;
