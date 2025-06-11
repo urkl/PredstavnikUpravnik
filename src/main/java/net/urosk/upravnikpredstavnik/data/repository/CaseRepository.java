@@ -9,4 +9,6 @@ import java.util.List;
 public interface CaseRepository extends MongoRepository<Case, String> {
     List<Case> findByStatus(String status);
     List<Case> findByAuthorId(String authorId);
+    List<Case> findFirst10ByAuthorIdOrderByCreatedDateDesc(String authorId);
+
 }

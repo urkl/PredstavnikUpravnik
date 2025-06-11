@@ -1,16 +1,12 @@
-// KONČNA POPRAVLJENA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/SecurityConfig.java
 package net.urosk.upravnikpredstavnik.security;
 
-import com.vaadin.flow.server.auth.AccessAnnotationChecker;
+import com.vaadin.flow.spring.security.VaadinSavedRequestAwareAuthenticationSuccessHandler;
 import com.vaadin.flow.spring.security.VaadinWebSecurity;
 import net.urosk.upravnikpredstavnik.ui.views.LoginView;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-
-import java.lang.reflect.AnnotatedElement;
 
 
 @EnableWebSecurity
@@ -27,27 +23,29 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+        // Najprej dovolimo dostop do javnih virov
         http.authorizeHttpRequests(auth -> auth.requestMatchers("/images/**", "/themes/**").permitAll());
 
+        // --- SPREMEMBA: Klic super.configure() prestavimo na začetek ---
+        // To nastavi Vaadinove privzete varnostne nastavitve, ki jih nato povozimo.
         super.configure(http);
+        // ----------------------------------------------------------------
+
+        // Sedaj definiramo naše lastne nastavitve, ki bodo imele prednost
+        setLoginView(http, LoginView.class, "/logout");
 
         http.oauth2Login(oauth2 -> oauth2
                         .loginPage("/login")
+                        .successHandler(new VaadinSavedRequestAwareAuthenticationSuccessHandler())
                         .userInfoEndpoint(userInfo -> userInfo
-                                // SPREMEMBA: Uporabimo .oidcUserService() namesto .userService()
                                 .oidcUserService(this.customOAuth2UserService)
                         )
                 )
                 .rememberMe(rememberMe -> rememberMe
                         .userDetailsService(this.userDetailsService)
-                        .key("neka-zelo-dolga-in-varna-skrivna-vrednost")
+                        .key("neka-zelo-dolga-in-varna-skrivna-vrednost") // Uporabi varno vrednost!
                         .tokenValiditySeconds(86400 * 14)
                         .alwaysRemember(true)
                 );
-
-        setLoginView(http, LoginView.class, "/logout");
     }
-
-
-
 }

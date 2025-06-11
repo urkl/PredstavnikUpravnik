@@ -20,9 +20,7 @@ public class AuthenticatedUser {
     }
 
     public Optional<User> get() {
-        return authenticationContext.getAuthenticatedUser(OAuth2User.class)
-                .map(oauthUser -> userRepository.findByEmail(oauthUser.getAttribute("email")))
-                .orElse(Optional.empty());
+        return authenticationContext.getAuthenticatedUser(OAuth2User.class).flatMap(oauthUser -> userRepository.findByEmail(oauthUser.getAttribute("email")));
     }
 
     public void logout() {

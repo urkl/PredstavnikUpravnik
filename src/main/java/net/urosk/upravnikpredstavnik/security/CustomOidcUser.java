@@ -11,10 +11,7 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 import java.util.Map;
 
-/**
- * Ta razred je "ovitek" okoli standardnega OidcUser objekta.
- * Springu posreduje pravilne vloge iz naše baze podatkov.
- */
+
 public class CustomOidcUser implements OidcUser {
 
     private final OidcUser oidcUser;
@@ -53,7 +50,6 @@ public class CustomOidcUser implements OidcUser {
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // --- POPRAVEK: Logika je sedaj bolj čista ---
         // Ker imajo vloge že predpono "ROLE_", jih samo preslikamo v SimpleGrantedAuthority.
         return appUser.getRoles().stream()
                 .map(SimpleGrantedAuthority::new) // Nič več ročnega sestavljanja niza

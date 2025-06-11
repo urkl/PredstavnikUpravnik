@@ -1,4 +1,3 @@
-// LOKACIJA NOVE DATOTEKE: src/main/java/net/urosk/upravnikpredstavnik/security/UserDetailsServiceImpl.java
 package net.urosk.upravnikpredstavnik.security;
 
 import net.urosk.upravnikpredstavnik.data.entity.User;
@@ -11,7 +10,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,19 +25,19 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Poiščemo uporabnika v bazi po e-pošti (ki je naše uporabniško ime)
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Uporabnik z e-pošto '" + username + "' ne obstaja."));
 
-        // SPREMEMBA: Ustvarimo avtoriteto za vsako vlogo na seznamu
+        // --- SPREMEMBA: Poenotimo logiko z CustomOidcUser ---
+        // Ker imajo vloge v bazi že predpono "ROLE_", jih samo preslikamo.
         List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
+        // ----------------------------------------------------
 
-        // Vrnemo standardni Spring Security UserDetails objekt
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
-                "", // Geslo ni v uporabi pri OAuth2, pustimo prazno
+                "", // Geslo ni v uporabi
                 user.isActivated(),
                 true,
                 true,
