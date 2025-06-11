@@ -1,18 +1,19 @@
-// POPRAVLJENA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2UserService.java
+// PREDLAGANA POSODOBITEV: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2UserService.java
 package net.urosk.upravnikpredstavnik.security;
 
 import net.urosk.upravnikpredstavnik.data.Role;
 import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
 @Service
-public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+// SPREMEMBA: Razširimo OidcUserService namesto DefaultOAuth2UserService
+public class CustomOAuth2UserService extends OidcUserService {
 
     private final UserRepository userRepository;
 
@@ -23,21 +24,20 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         this.userRepository = userRepository;
     }
 
-// PREDLAGANA SPREMEMBA ZA DIAGNOSTIKO: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2UserService.java
-
-// ... (ostala koda ostane enaka) ...
-
     @Override
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        OAuth2User oauthUser = super.loadUser(userRequest);
-        String email = oauthUser.getAttribute("email");
+    // SPREMEMBA: Metoda sedaj sprejema in vrača OidcUser objekte
+    public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
+        // Najprej pokličemo originalno metodo, da dobimo OIDC podatke
+        OidcUser oidcUser = super.loadUser(userRequest);
+        String email = oidcUser.getAttribute("email");
 
+        // Logika za iskanje in shranjevanje uporabnika ostaja popolnoma enaka
         User appUser = userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     System.out.println("!!! Uporabnik z emailom " + email + " ne obstaja. Ustvarjam novega... !!!");
                     User newUser = new User();
                     newUser.setEmail(email);
-                    newUser.setName(oauthUser.getAttribute("name"));
+                    newUser.setName(oidcUser.getAttribute("name"));
                     newUser.setActivated(true);
 
                     if (adminEmail.equalsIgnoreCase(email)) {
@@ -46,16 +46,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                         newUser.setRole(Role.STANOVALEC);
                     }
 
-                    // Shranimo novega uporabnika
                     User savedUser = userRepository.save(newUser);
-
-                    // --- DODAJ TA IZPIS ZA PREVERJANJE ---
                     System.out.println("!!! USPEŠNO SHRANJEN NOV UPORABNIK Z ID-JEM: " + savedUser.getId() + " !!!");
-                    // --- KONEC DODATKA ---
-
                     return savedUser;
                 });
 
-        return new CustomOAuth2User(oauthUser, appUser);
+        // Vrnemo nov, prilagojen objekt, ki vsebuje tako OIDC podatke kot našega uporabnika iz baze
+        return new CustomOidcUser(oidcUser, appUser);
     }
 }

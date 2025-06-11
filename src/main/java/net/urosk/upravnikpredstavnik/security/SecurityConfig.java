@@ -8,6 +8,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
+
+
 @EnableWebSecurity
 @Configuration
 public class SecurityConfig extends VaadinWebSecurity {
@@ -22,19 +24,15 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(auth -> auth.requestMatchers(
-                "/images/**",
-                "/themes/**"
-        ).permitAll());
+        http.authorizeHttpRequests(auth -> auth.requestMatchers("/images/**", "/themes/**").permitAll());
 
         super.configure(http);
 
         http.oauth2Login(oauth2 -> oauth2
-                        // --- DODAJ TO VRSTICO ---
-                        .loginPage("/login") // Eksplicitno povemo, kje je naša prijavna stran
-
+                        .loginPage("/login")
                         .userInfoEndpoint(userInfo -> userInfo
-                                .userService(this.customOAuth2UserService)
+                                // SPREMEMBA: Uporabimo .oidcUserService() namesto .userService()
+                                .oidcUserService(this.customOAuth2UserService)
                         )
                 )
                 .rememberMe(rememberMe -> rememberMe
