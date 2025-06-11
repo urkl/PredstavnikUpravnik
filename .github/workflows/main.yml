@@ -45,7 +45,7 @@ jobs:
       # 4. korak: Gradnja aplikacije in Docker slike ter potiskanje v GHCR
       # Uporabimo profile 'production' in 'github', ki sva jih definirala v pom.xml
       - name: Build and push Docker image with Jib
-        run: ./mvnw -B compile -Pproduction,github jib:build
+        run: ./mvnw -B package -Pproduction,github jib:build
         env:
           # GITHUB_TOKEN je avtomatsko na voljo in se uporabi za avtentikacijo
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
