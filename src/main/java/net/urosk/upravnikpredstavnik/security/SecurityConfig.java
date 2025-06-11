@@ -1,13 +1,16 @@
 // KONČNA POPRAVLJENA VERZIJA: src/main/java/net/urosk/upravnikpredstavnik/security/SecurityConfig.java
 package net.urosk.upravnikpredstavnik.security;
 
+import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.spring.security.VaadinWebSecurity;
 import net.urosk.upravnikpredstavnik.ui.views.LoginView;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
+import java.lang.reflect.AnnotatedElement;
 
 
 @EnableWebSecurity
@@ -39,8 +42,12 @@ public class SecurityConfig extends VaadinWebSecurity {
                         .userDetailsService(this.userDetailsService)
                         .key("neka-zelo-dolga-in-varna-skrivna-vrednost")
                         .tokenValiditySeconds(86400 * 14)
+                        .alwaysRemember(true)
                 );
 
         setLoginView(http, LoginView.class, "/logout");
     }
+
+
+
 }

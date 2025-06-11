@@ -8,10 +8,13 @@ import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.stream.Collectors;
 import java.util.Map;
 
-// SPREMEMBA: Implementiramo OidcUser namesto OAuth2User
+/**
+ * Ta razred je "ovitek" okoli standardnega OidcUser objekta.
+ * Springu posreduje pravilne vloge iz naše baze podatkov.
+ */
 public class CustomOidcUser implements OidcUser {
 
     private final OidcUser oidcUser;
@@ -22,7 +25,8 @@ public class CustomOidcUser implements OidcUser {
         this.appUser = appUser;
     }
 
-    // --- Metode iz vmesnika OidcUser ---
+    // --- Metode, ki jih zahteva vmesnik OidcUser ---
+
     @Override
     public Map<String, Object> getClaims() {
         return oidcUser.getClaims();
@@ -38,25 +42,29 @@ public class CustomOidcUser implements OidcUser {
         return oidcUser.getIdToken();
     }
 
-    // --- Metode iz vmesnika OAuth2User (ki ga OidcUser razširja) ---
     @Override
     public Map<String, Object> getAttributes() {
         return oidcUser.getAttributes();
     }
 
+    /**
+     * Ključna metoda, ki Springu posreduje vloge uporabnika.
+     * Sedaj pravilno obdela seznam vlog.
+     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        String roleName = "ROLE_" + appUser.getRole().name();
-        return Collections.singletonList(new SimpleGrantedAuthority(roleName));
+        // --- POPRAVEK: Logika je sedaj bolj čista ---
+        // Ker imajo vloge že predpono "ROLE_", jih samo preslikamo v SimpleGrantedAuthority.
+        return appUser.getRoles().stream()
+                .map(SimpleGrantedAuthority::new) // Nič več ročnega sestavljanja niza
+                .collect(Collectors.toList());
     }
 
     @Override
     public String getName() {
-        // Uporabimo ime iz našega User objekta za konsistentnost
         return appUser.getName();
     }
 
-    // --- Dodatne metode za lažji dostop ---
     public String getEmail() {
         return appUser.getEmail();
     }

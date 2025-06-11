@@ -12,9 +12,9 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
-import net.urosk.upravnikpredstavnik.data.Status;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
+import net.urosk.upravnikpredstavnik.process.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 import net.urosk.upravnikpredstavnik.ui.util.CaseFormUtils;
 
@@ -22,13 +22,13 @@ import net.urosk.upravnikpredstavnik.ui.util.CaseFormUtils;
 @PageTitle("Moje Zadeve")
 @PermitAll
 public class ResidentView extends VerticalLayout {
-
     private final CaseRepository caseRepository;
     private final AuthenticatedUser authenticatedUser;
-
-    public ResidentView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser) {
+    private final AppProcessProperties appProcessProperties; // DODAMO
+    public ResidentView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties) {
         this.caseRepository = caseRepository;
         this.authenticatedUser = authenticatedUser;
+        this.appProcessProperties = appProcessProperties;
 
         setSizeFull();
         setSpacing(true);
@@ -42,9 +42,9 @@ public class ResidentView extends VerticalLayout {
         grid.setColumns("title", "description", "status", "lastModifiedDate");
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
-        // Dodamo gumb za izbris če je status PREDLOG
         grid.addComponentColumn(item -> {
-            if (item.getStatus() == Status.PREDLOG) {
+            // --- POPRAVEK: Primerjamo z nizom namesto z enumom ---
+            if ("PREDLOG".equals(item.getStatus())) {
                 Button deleteBtn = new Button(new Icon(VaadinIcon.TRASH));
                 deleteBtn.getElement().setAttribute("title", "Izbriši zadevo");
                 deleteBtn.addClickListener(e -> {
@@ -59,8 +59,9 @@ public class ResidentView extends VerticalLayout {
             return new Div();
         }).setHeader("").setAutoWidth(true);
 
-        // Dodamo obrazec preko util razreda
-        add(CaseFormUtils.createResidentCaseForm(caseRepository, authenticatedUser, grid));
+
+        String defaultStatus = appProcessProperties.getDefaultStatus();
+        add(CaseFormUtils.createResidentCaseForm(caseRepository, authenticatedUser, grid,defaultStatus));
         add(grid);
 
         authenticatedUser.get().ifPresent(user -> {

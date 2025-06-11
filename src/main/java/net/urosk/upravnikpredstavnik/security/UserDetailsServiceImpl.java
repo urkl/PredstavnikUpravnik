@@ -31,10 +31,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Uporabnik z e-pošto '" + username + "' ne obstaja."));
 
-        // Pretvorimo naše vloge (npr. PREDSTAVNIK) v vloge, ki jih razume Spring Security (npr. ROLE_PREDSTAVNIK)
-        List<GrantedAuthority> authorities = Collections.singletonList(
-                new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
-        );
+        // SPREMEMBA: Ustvarimo avtoriteto za vsako vlogo na seznamu
+        List<GrantedAuthority> authorities = user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .collect(Collectors.toList());
 
         // Vrnemo standardni Spring Security UserDetails objekt
         return new org.springframework.security.core.userdetails.User(

@@ -1,7 +1,6 @@
 // PREDLAGANA POSODOBITEV: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2UserService.java
 package net.urosk.upravnikpredstavnik.security;
 
-import net.urosk.upravnikpredstavnik.data.Role;
 import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,17 +10,21 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Set;
+
 @Service
 // SPREMEMBA: Razširimo OidcUserService namesto DefaultOAuth2UserService
 public class CustomOAuth2UserService extends OidcUserService {
 
     private final UserRepository userRepository;
-
+    private final AppSecurityProperties appSecurityProperties;
     @Value("${app.admin-email}")
     private String adminEmail;
 
-    public CustomOAuth2UserService(UserRepository userRepository) {
+    public CustomOAuth2UserService(UserRepository userRepository, AppSecurityProperties appSecurityProperties) {
         this.userRepository = userRepository;
+        this.appSecurityProperties = appSecurityProperties;
     }
 
     @Override
@@ -41,9 +44,12 @@ public class CustomOAuth2UserService extends OidcUserService {
                     newUser.setActivated(true);
 
                     if (adminEmail.equalsIgnoreCase(email)) {
-                        newUser.setRole(Role.PREDSTAVNIK);
+                        // Admin je lahko predstavnik IN upravnik
+                        newUser.setRoles(Set.of("ROLE_ADMINISTRATOR", "ROLE_PREDSTAVNIK", "ROLE_UPRAVNIK", "ROLE_STANOVALEC"));
+
                     } else {
-                        newUser.setRole(Role.STANOVALEC);
+                        // Navaden uporabnik dobi samo privzeto vlogo
+                        newUser.setRoles(Set.of(appSecurityProperties.getDefaultRole()));
                     }
 
                     User savedUser = userRepository.save(newUser);

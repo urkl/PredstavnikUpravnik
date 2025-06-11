@@ -2,12 +2,15 @@
 package net.urosk.upravnikpredstavnik.data.entity;
 
 import lombok.Data;
-import net.urosk.upravnikpredstavnik.data.Role;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Data
 @Document(collection = "users")
@@ -17,6 +20,7 @@ public class User implements Serializable {
     private String name;
     @Indexed(unique = true)
     private String email;
-    private Role role;
+    private Set<String> roles = new HashSet<>();
+
     private boolean activated;
 }

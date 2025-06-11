@@ -1,6 +1,32 @@
 app:
   admin-email: uros.kristan@gmail.com
 
+  security:
+
+    default-role: ROLE_STANOVALEC
+    roles:
+      - ROLE_ADMINISTRATOR
+      - ROLE_PREDSTAVNIK
+      - ROLE_UPRAVNIK
+      - ROLE_STANOVALEC
+
+    view-access:
+      net.urosk.upravnikpredstavnik.ui.views.ResidentView: [ROLE_STANOVALEC, ROLE_PREDSTAVNIK, ROLE_UPRAVNIK]
+      net.urosk.upravnikpredstavnik.ui.views.ManagerKanbanView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
+      net.urosk.upravnikpredstavnik.ui.views.CalendarView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
+      net.urosk.upravnikpredstavnik.ui.views.CaseDetailView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
+      net.urosk.upravnikpredstavnik.ui.views.AdminView: [ROLE_ADMINISTRATOR]
+
+  # --- NOV RAZDELEK ZA STATUSE ---
+  process:
+    statuses:
+      PREDLOG: "Predlog"
+      V_PREGLEDU: "V pregledu"
+      POTRJENO: "Potrjeno"
+      V_DELU: "V delu"
+      ZAKLJUCENO: "Zaključeno"
+      # Privzeti status za novo zadevo
+    default-status: PREDLOG
 # -------------------------------------------
 # SPRING BOOT APLIKACIJA
 # -------------------------------------------

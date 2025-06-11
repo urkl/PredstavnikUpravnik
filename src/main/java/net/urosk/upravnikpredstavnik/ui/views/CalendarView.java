@@ -32,7 +32,8 @@ public class CalendarView extends VerticalLayout {
 
     private final CaseRepository caseRepository;
     private final InMemoryEntryProvider<Entry> entryProvider = new InMemoryEntryProvider<>();
-    private final FullCalendar calendar = new FullCalendar();
+    private final FullCalendar calendar = FullCalendarBuilder.create().build();
+    ;
     private final ComboBox<Integer> yearSelect = new ComboBox<>("Leto");
     private final ComboBox<String> monthSelect = new ComboBox<>("Mesec");
 

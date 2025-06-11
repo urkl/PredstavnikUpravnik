@@ -20,10 +20,10 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
-import net.urosk.upravnikpredstavnik.data.Status;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.Subtask;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
+import net.urosk.upravnikpredstavnik.process.AppProcessProperties;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -35,26 +35,35 @@ import java.util.*;
 @PermitAll
 public class ManagerKanbanView extends HorizontalLayout {
 
-    private final CaseRepository caseRepository;
-    private final Map<Status, VerticalLayout> statusColumns = new HashMap<>();
 
-    public ManagerKanbanView(CaseRepository caseRepository) {
+    private final CaseRepository caseRepository;
+    // SPREMEMBA: Uporabimo String kot ključ
+    private final Map<String, VerticalLayout> statusColumns = new HashMap<>();
+    private final AppProcessProperties processProperties;
+
+
+    public ManagerKanbanView(CaseRepository caseRepository, AppProcessProperties processProperties) { // SPREMEMBA KONSTRUKTORJA
         this.caseRepository = caseRepository;
+        this.processProperties = processProperties; // SHRANIMO
         setSizeFull();
         setSpacing(true);
         addClassName("kanban-board");
 
-        for (Status status : Status.values()) {
-            VerticalLayout column = createStatusColumn(status);
-            statusColumns.put(status, column);
+        for (String statusKey : processProperties.getStatuses().keySet()) {
+            // Za naslov stolpca uporabimo prikazno ime iz mape
+            String displayName = processProperties.getStatuses().get(statusKey);
+            VerticalLayout column = createStatusColumn(statusKey, displayName);
+            statusColumns.put(statusKey, column);
             add(column);
         }
+
 
         loadAndDisplayCases();
     }
 
-    private VerticalLayout createStatusColumn(Status status) {
-        H3 title = new H3(status.name().replace("_", " "));
+
+    private VerticalLayout createStatusColumn(String statusKey, String displayName) {
+        H3 title = new H3(displayName); // Uporabimo prikazno ime
         VerticalLayout column = new VerticalLayout(title);
         column.addClassName("kanban-column");
 
@@ -63,27 +72,24 @@ public class ManagerKanbanView extends HorizontalLayout {
 
         dropTarget.addDropListener(event -> {
             if (event.getDragData().isEmpty()) return;
-
             Optional<Component> dragSourceOpt = event.getDragSourceComponent();
             if (dragSourceOpt.isEmpty()) return;
-
             Component draggedComponent = dragSourceOpt.get();
             if (!(draggedComponent instanceof Card draggedCard)) return;
 
             event.getDragData().flatMap(data -> caseRepository.findById((String) data)).ifPresent(caseToUpdate -> {
                 if (!column.equals(draggedCard.getParent().orElse(null))) {
-                    caseToUpdate.setStatus(status);
+                    caseToUpdate.setStatus(statusKey); // V bazo shranimo ključ
                     caseRepository.save(caseToUpdate);
                     draggedCard.getParent().ifPresent(parent -> ((VerticalLayout) parent).remove(draggedCard));
                     column.add(draggedCard);
-                    addStatusTheme(draggedCard, status);
+                    addStatusTheme(draggedCard, statusKey); // Uporabimo ključ za določanje stila
                 }
             });
         });
 
         return column;
     }
-
     private void loadAndDisplayCases() {
         caseRepository.findAll().forEach(caseItem -> {
             VerticalLayout column = statusColumns.get(caseItem.getStatus());
@@ -202,15 +208,17 @@ public class ManagerKanbanView extends HorizontalLayout {
         return card;
     }
 
-    private void addStatusTheme(Card card, Status status) {
+    private void addStatusTheme(Card card, String status) { // Sprejema String
         card.removeClassName("status-predlog");
         card.removeClassName("status-v-delu");
         card.removeClassName("status-zakljuceno");
 
+        // Uporabimo if-else ali switch za String
         String theme = switch (status) {
-            case PREDLOG, V_PREGLEDU -> "status-predlog";
-            case POTRJENO, V_DELU -> "status-v-delu";
-            case ZAKLJUCENO -> "status-zakljuceno";
+            case "PREDLOG", "V_PREGLEDU" -> "status-predlog";
+            case "POTRJENO", "V_DELU" -> "status-v-delu";
+            case "ZAKLJUCENO" -> "status-zakljuceno";
+            default -> "";
         };
         card.addClassName(theme);
     }

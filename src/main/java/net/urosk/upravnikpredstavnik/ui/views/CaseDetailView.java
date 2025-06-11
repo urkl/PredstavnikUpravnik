@@ -11,25 +11,26 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.streams.UploadHandler; // <-- PRAVILEN UVOZ
+import com.vaadin.flow.server.streams.UploadEvent;
+import com.vaadin.flow.server.streams.UploadHandler;
 import jakarta.annotation.security.PermitAll;
-import net.urosk.upravnikpredstavnik.data.Status;
 import net.urosk.upravnikpredstavnik.data.entity.AttachedFile;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
+import net.urosk.upravnikpredstavnik.process.AppProcessProperties;
 
-import java.io.ByteArrayOutputStream; // <-- NOV UVOZ
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream; // <-- NOV UVOZ
+import java.io.OutputStream;
 import java.util.Optional;
 
 @Route(value = "zadeva", layout = MainLayout.class)
@@ -38,21 +39,23 @@ import java.util.Optional;
 public class CaseDetailView extends VerticalLayout implements HasUrlParameter<String> {
 
     private final CaseRepository caseRepository;
+    private final AppProcessProperties appProcessProperties;
     private Case currentCase;
 
     private final Binder<Case> binder = new Binder<>(Case.class);
     private final TextField title = new TextField("Naslov");
     private final TextArea description = new TextArea("Opis");
-    private final RadioButtonGroup<Status> status = new RadioButtonGroup<>("Status");
+    // SPREMEMBA: Uporabimo ComboBox<String> namesto RadioButtonGroup<Status>
+    private final ComboBox<String> status = new ComboBox<>("Status");
     private final Grid<AttachedFile> filesGrid = new Grid<>(AttachedFile.class);
     private final Upload upload = new Upload();
 
     private ByteArrayOutputStream uploadStream;
 
-    public CaseDetailView(CaseRepository caseRepository) {
+    public CaseDetailView(CaseRepository caseRepository, AppProcessProperties appProcessProperties) {
         this.caseRepository = caseRepository;
+        this.appProcessProperties = appProcessProperties;
         setSizeFull();
-        status.setItems(Status.values());
         getStyle()
                 .set("background-color", "rgba(255, 255, 255, 0.95)")
                 .set("border-radius", "12px")
@@ -80,28 +83,35 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
         binder.bindInstanceFields(this);
     }
 
+    /**
+     * Posodobljena metoda za konfiguracijo nalaganja, ki uporablja UploadHandler.
+     */
     private void configureUploader() {
-        // Uporabimo UploadHandler, kot si predlagal.
-        upload.setReceiver( (fileName, mimeType) -> {
-            // Ustvarimo nov tok za vsako datoteko, ki se nalaga.
-            uploadStream = new ByteArrayOutputStream();
+        // Ustvarimo handler, ki bo obdelal vsako naloženo datoteko.
+        UploadHandler handler = new UploadHandler() {
+            @Override
+            public void handleUploadRequest(UploadEvent event) {
+                try {
+                    // Preberemo vsebino datoteke v polje bajtov
+                    byte[] content = event.getInputStream().readAllBytes();
+                    AttachedFile newFile = new AttachedFile(event.getFileName(), event.getContentType(), content);
 
-            // Vrnemo OutputStream, v katerega bo komponenta Upload pisala podatke.
-            return uploadStream;
-        });
+                    // Ker se ta koda lahko izvaja v ločeni niti, moramo za posodobitev
+                    // UI-ja uporabiti ui.access()
+                    getUI().ifPresent(ui -> ui.access(() -> {
+                        promptForFileComment(newFile);
+                    }));
+
+                } catch (IOException e) {
+                    Notification.show("Napaka pri obdelavi datoteke: " + e.getMessage());
+                }
+            }
+        };
+
+        upload.setUploadHandler(handler);
         upload.setAcceptedFileTypes("image/*", ".pdf", ".doc", ".docx");
         upload.setMaxFiles(5);
-
-        upload.addSucceededListener(event -> {
-            byte[] content = uploadStream.toByteArray();
-            AttachedFile newFile = new AttachedFile(event.getFileName(), event.getMIMEType(), content);
-            promptForFileComment(newFile);
-        });
-
-        upload.addFailedListener(event -> uploadStream = null);
-        upload.addFileRejectedListener(event -> uploadStream = null);
     }
-
     private void promptForFileComment(AttachedFile file) {
         Dialog dialog = new Dialog();
         TextField commentField = new TextField("Komentar za datoteko: " + file.getFileName());
@@ -118,7 +128,7 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
     }
 
     private void configureFilesGrid() {
-        filesGrid.setColumns("fileName",  "comment");
+        filesGrid.setColumns("fileName", "comment");
         filesGrid.addComponentColumn(file -> new Button("Izbriši", e -> {
             currentCase.getAttachedFiles().remove(file);
             filesGrid.getDataProvider().refreshAll();
@@ -146,6 +156,10 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
                 binder.setBean(currentCase);
                 filesGrid.setItems(currentCase.getAttachedFiles());
 
+                // Pravilna nastavitev ComboBox-a
+                status.setItems(appProcessProperties.getStatuses().keySet());
+                status.setItemLabelGenerator(statusKey -> appProcessProperties.getStatuses().get(statusKey));
+                status.setValue(currentCase.getStatus()); // Nastavi trenutno vrednost
             } else {
                 UI.getCurrent().navigate(ManagerKanbanView.class);
             }

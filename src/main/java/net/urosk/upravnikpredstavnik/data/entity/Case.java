@@ -2,7 +2,6 @@
 package net.urosk.upravnikpredstavnik.data.entity;
 
 import lombok.Data;
-import net.urosk.upravnikpredstavnik.data.Status;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -18,7 +17,7 @@ public class Case {
     private String id;
     private String title;
     private String description;
-    private Status status;
+    private String status;
     @DBRef
     private User author;
     @DBRef
