@@ -26,11 +26,10 @@ import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.data.entity.AttachedFile;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
-import net.urosk.upravnikpredstavnik.process.AppProcessProperties;
+import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Optional;
 
 @Route(value = "zadeva", layout = MainLayout.class)

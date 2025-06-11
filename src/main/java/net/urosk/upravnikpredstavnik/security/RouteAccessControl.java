@@ -1,9 +1,9 @@
 package net.urosk.upravnikpredstavnik.security;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.server.ServiceInitEvent;
 import com.vaadin.flow.server.VaadinServiceInitListener;
+import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
 import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.ui.views.AccessDeniedView;
 import net.urosk.upravnikpredstavnik.ui.views.LoginView;

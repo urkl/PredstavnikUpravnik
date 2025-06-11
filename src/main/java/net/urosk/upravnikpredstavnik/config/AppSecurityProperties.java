@@ -1,4 +1,4 @@
-package net.urosk.upravnikpredstavnik.security;
+package net.urosk.upravnikpredstavnik.config;
 
 
 import lombok.Data;
@@ -13,6 +13,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "app.security")
 public class AppSecurityProperties {
     private String defaultRole;
+    private String rememberMeToken;
     private List<String> roles;
     private Map<String, List<String>> viewAccess;
 }

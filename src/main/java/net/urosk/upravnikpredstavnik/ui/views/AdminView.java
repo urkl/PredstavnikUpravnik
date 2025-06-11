@@ -14,7 +14,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
-import net.urosk.upravnikpredstavnik.security.AppSecurityProperties;
+import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
 
 @Route(value = "admin", layout = MainLayout.class)
 @PageTitle("Administracija")

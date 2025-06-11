@@ -14,7 +14,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
-import net.urosk.upravnikpredstavnik.process.AppProcessProperties;
+import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 import net.urosk.upravnikpredstavnik.ui.util.CaseFormUtils;
 

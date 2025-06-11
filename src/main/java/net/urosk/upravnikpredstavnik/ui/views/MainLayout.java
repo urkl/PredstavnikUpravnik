@@ -12,8 +12,9 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.RouterLink;
 import net.urosk.upravnikpredstavnik.config.AppMenuProperties;
+import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
 import net.urosk.upravnikpredstavnik.data.entity.User;
-import net.urosk.upravnikpredstavnik.security.AppSecurityProperties;
+
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
 import java.util.Collections;
@@ -49,7 +50,6 @@ public class MainLayout extends AppLayout {
             User user = maybeUser.get();
             Set<String> userRoles = user.getRoles();
 
-            // Dinamično grajenje menija
             menuProperties.getItems().forEach(item -> {
                 if (isAccessGranted(item.getView(), userRoles)) {
                     try {
@@ -62,13 +62,16 @@ public class MainLayout extends AppLayout {
                 }
             });
 
-            // --- ZAČETEK POPRAVKA: Pravilno ustvarjanje uporabniškega menija ---
-
-            // 1. Ustvarimo vidni del (Avatar)
             Avatar avatar = new Avatar(user.getName());
             avatar.getStyle().set("cursor", "pointer");
 
-            // 2. Ustvarimo nevidni del (ContextMenu)
+            // --- TUKAJ JE POPRAVEK ZA VIDNOST AVATARJA ---
+            // Dodamo 2px bel rob, da bo avatar izstopal na temnem ozadju.
+            avatar.getStyle().set("border", "2px solid var(--lumo-primary-contrast-color)");
+            avatar.getStyle().set("color", "black");
+            avatar.getStyle().set("background-color", "white");
+            // ---------------------------------------------
+
             ContextMenu userMenu = new ContextMenu();
             userMenu.setTarget(avatar);
             userMenu.setOpenOnClick(true);
@@ -76,12 +79,8 @@ public class MainLayout extends AppLayout {
             userMenu.add(new Hr());
             userMenu.addItem("Odjava", e -> authenticatedUser.logout());
 
-            // 3. Kontejner, ki bo vseboval oba dela - avatar in meni.
-            // S tem zagotovimo, da sta oba dela v komponentnem drevesu.
             HorizontalLayout userInfo = new HorizontalLayout(avatar, userMenu);
             userInfo.setAlignItems(FlexComponent.Alignment.CENTER);
-
-            // --- KONEC POPRAVKA ---
 
             HorizontalLayout header = new HorizontalLayout(logo, navIcons);
             header.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -96,8 +95,6 @@ public class MainLayout extends AppLayout {
             addToNavbar(fullBar);
         }
     }
-
-    // Pomožna metoda `createUserMenu` ni več potrebna, ker smo logiko poenostavili.
 
     private boolean isAccessGranted(String viewClassName, Set<String> userRoles) {
         List<String> requiredRoles = securityProperties.getViewAccess().get(viewClassName);

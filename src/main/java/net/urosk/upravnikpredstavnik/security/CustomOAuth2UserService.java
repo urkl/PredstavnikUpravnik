@@ -1,6 +1,7 @@
 // PREDLAGANA POSODOBITEV: src/main/java/net/urosk/upravnikpredstavnik/security/CustomOAuth2UserService.java
 package net.urosk.upravnikpredstavnik.security;
 
+import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
 import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,7 +11,6 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Set;
 
 @Service

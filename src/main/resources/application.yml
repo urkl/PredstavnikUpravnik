@@ -16,6 +16,7 @@ app:
       net.urosk.upravnikpredstavnik.ui.views.CalendarView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
       net.urosk.upravnikpredstavnik.ui.views.CaseDetailView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
       net.urosk.upravnikpredstavnik.ui.views.AdminView: [ROLE_ADMINISTRATOR]
+    remember-me-token: erf2šlrmo243imrio23rm23oirm23okemnfoi2w3efmnewofnweofnweffewfnwefewfo2ne392r3
 
 
   # --- NOV RAZDELEK ZA DEFINICIJO MENIJA ---
