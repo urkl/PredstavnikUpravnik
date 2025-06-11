@@ -12,6 +12,7 @@ import java.util.Map;
 @Component
 @ConfigurationProperties(prefix = "app.security")
 public class AppSecurityProperties {
+    private List<String> allowedMimeTypes;
     private String defaultRole;
     private String rememberMeToken;
     private List<String> roles;

@@ -1,7 +1,26 @@
 app:
   admin-email: uros.kristan@gmail.com
 
+
   security:
+    allowed-mime-types:
+      - .jpg
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/webp
+      - image/tiff
+      - image/svg+xml
+      - application/pdf
+      - application/msword
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/vnd.ms-excel
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/vnd.ms-powerpoint
+      - application/vnd.openxmlformats-officedocument.presentationml.presentation
+      - text/plain
+      - application/rtf
+
 
     default-role: ROLE_STANOVALEC
     roles:
@@ -34,7 +53,7 @@ app:
       - view: net.urosk.upravnikpredstavnik.ui.views.CalendarView
         icon: CALENDAR
         tooltip: "Koledar"
-  # --- NOV RAZDELEK ZA STATUSE ---
+
   process:
     statuses:
       PREDLOG: "Predlog"
@@ -49,9 +68,20 @@ app:
 # -------------------------------------------
 server:
   port: 8080
+  servlet:
+
+    session:
+      persistent: false
+  forward-headers-strategy: FRAMEWORK
 
 spring:
+  servlet:
 
+
+
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   # MongoDB Connection
   data:
     mongodb:
@@ -94,6 +124,7 @@ logging:
     # To je KLJUČNO za odpravljanje napak pri prijavi in varnosti!
     # Prikazalo bo delovanje vseh Spring Security filtrov.
     org.springframework.security: INFO
+    org.atmosphere: WARN
 
     # Uporabno za preverjanje poizvedb v MongoDB
     org.springframework.data.mongodb: INFO

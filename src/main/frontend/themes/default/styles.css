@@ -1,31 +1,72 @@
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Revalia&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@500;700&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@500;700&display=swap');
 
 
 html {
-    font-family: 'Roboto', sans-serif;
+    /* Nastavite osnovno pisavo za celotno stran */
+    font-family: 'Lato', sans-serif;
     height: 100%;
 }
+
+/*!* Eksplicitno nastavite pisavo za naslove (H1, H2, H3...) *!*/
+/*h1, h2, h3, h4, h5, h6 {*/
+/*    font-family: 'Montserrat', sans-serif;*/
+/*}*/
+
 body {
     /* Naloži sliko iz mape images */
     background-image: url('images/background.png');
 
-    /* Poskrbi, da slika pokrije celotno ozadje */
+    /* ... ostale nastavitve za ozadje ... */
     background-size: cover;
-
-    /* Centrira sliko */
     background-position: center center;
-
-    /* Prepreči ponavljanje slike */
     background-repeat: no-repeat;
-
-    /* Fiksira ozadje, da se ne premika med drsenjem vsebine */
     background-attachment: fixed;
-
-    /* Poskrbi, da višina telesa zasede celoten zaslon */
     height: 100vh;
     margin: 0;
+}
+
+
+/*html {*/
+/*    font-family: 'Fredoka', sans-serif;*/
+/*    height: 100%;*/
+/*}*/
+/*body {*/
+/*    !* Naloži sliko iz mape images *!*/
+/*    background-image: url('images/background.png');*/
+
+/*    !* Poskrbi, da slika pokrije celotno ozadje *!*/
+/*    background-size: cover;*/
+
+/*    !* Centrira sliko *!*/
+/*    background-position: center center;*/
+
+/*    !* Prepreči ponavljanje slike *!*/
+/*    background-repeat: no-repeat;*/
+
+/*    !* Fiksira ozadje, da se ne premika med drsenjem vsebine *!*/
+/*    background-attachment: fixed;*/
+
+/*    !* Poskrbi, da višina telesa zasede celoten zaslon *!*/
+/*    height: 100vh;*/
+/*    margin: 0;*/
+/*}*/
+
+
+
+
+.resident-case-card {
+    cursor: grab;
+    border-top: 5px solid transparent;
+    transition: box-shadow 0.2s;
+    background-color: var(--lumo-base-color);
+}
+.resident-case-card:hover {
+    box-shadow: var(--lumo-box-shadow-m);
 }
 
 

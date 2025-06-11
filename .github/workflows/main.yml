@@ -1,0 +1,57 @@
+# Ime delovnega toka (workflow), ki se prikaže v GitHub Actions zavihku
+name: Java CI with Maven and Docker Build
+
+# Sprožilci: kdaj naj se ta delovni tok zažene
+on:
+  push:
+    branches:
+      - main  # Zažene se ob vsakem push-u na 'main' vejo
+  pull_request:
+    branches:
+      - main  # Zažene se tudi ob odprtju pull requesta na 'main'
+
+jobs:
+  build-and-publish:
+    # Uporabimo najnovejši Ubuntu runner, ki ga ponuja GitHub
+    runs-on: ubuntu-latest
+
+    # Dovoljenja: Ključno je, da dovolimo pisanje v 'packages' za potiskanje slik
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. korak: Prevzem (checkout) vaše kode iz repozitorija
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. korak: Nastavitev Jave (JDK 21)
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 3. korak: Predpomnjenje (cache) Maven odvisnosti
+      # To bistveno pospeši ponovne gradnje, saj se knjižnice ne prenašajo vsakič znova.
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # 4. korak: Gradnja aplikacije in Docker slike ter potiskanje v GHCR
+      # Uporabimo profile 'production' in 'github', ki sva jih definirala v pom.xml
+      - name: Build and push Docker image with Jib
+        run: ./mvnw -B compile -Pproduction,github jib:build
+        env:
+          # GITHUB_TOKEN je avtomatsko na voljo in se uporabi za avtentikacijo
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_ACTOR in GITHUB_REPOSITORY_OWNER sta prav tako na voljo
+          # in se uporabita v pom.xml za pravilno poimenovanje slike.
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+

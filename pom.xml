@@ -12,8 +12,10 @@
 
     <properties>
         <java.version>21</java.version>
-        <vaadin.version>24.8.0.beta3</vaadin.version>
+        <vaadin.version>24.8.0.rc1</vaadin.version>
         <archunit.version>1.4.1</archunit.version>
+        <jib.image.name>upravnik-predstavnik-app</jib.image.name>
+
     </properties>
 
     <parent>
@@ -109,7 +111,11 @@
             <artifactId>spring-boot-devtools</artifactId>
             <optional>true</optional>
         </dependency>
-
+        <dependency>
+            <groupId>com.flowingcode.vaadin.addons</groupId>
+            <artifactId>error-window-vaadin</artifactId>
+            <version>4.2.0</version>
+        </dependency>
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -141,6 +147,37 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+
+            <!-- JIB PLUGIN ZA GRADNJU DOCKER SLIK -->
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.4.3</version>
+                <configuration>
+                    <from>
+                        <!-- Uporabimo lahko in varno osnovo za Javo 21 -->
+                        <image>eclipse-temurin:21-jre-jammy</image>
+                    </from>
+                    <to>
+                        <!-- Privzeto ime slike za lokalno gradnjo. -->
+                        <!-- V CI okolju bo to povozil ustrezen profil (npr. 'github'). -->
+                        <image>${jib.image.name}</image>
+                    </to>
+                    <container>
+                        <!-- Optimiziramo zagon Spring Boot aplikacije v kontejnerju -->
+                        <jvmFlags>
+                            <jvmFlag>-Xms512m</jvmFlag>
+                            <jvmFlag>-Xmx1024m</jvmFlag>
+                            <jvmFlag>-Djava.security.egd=file:/dev/./urandom</jvmFlag>
+                        </jvmFlags>
+                        <ports>
+                            <port>8080</port>
+                        </ports>
+                    </container>
+                    <containerizingMode>packaged</containerizingMode>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
@@ -240,6 +277,34 @@
                         <configuration>
                             <trimStackTrace>false</trimStackTrace>
                             <enableAssertions>true</enableAssertions>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>github</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <configuration>
+                            <to>
+                                <!-- Pot do slike na ghcr.io. GITHUB_REPOSITORY_OWNER mora biti z malimi črkami. -->
+                                <image>ghcr.io/${env.GITHUB_REPOSITORY_OWNER}/${project.artifactId}</image>
+                                <tags>
+                                    <!-- Uporabimo ime veje/oznake kot tag slike, in 'latest' -->
+                                    <tag>${env.GITHUB_REF_NAME}</tag>
+                                    <tag>latest</tag>
+                                </tags>
+                                <!-- Avtentikacija za GitHub Packages -->
+                                <auth>
+                                    <username>${env.GITHUB_ACTOR}</username>
+                                    <password>${env.GITHUB_TOKEN}</password>
+                                </auth>
+                            </to>
                         </configuration>
                     </plugin>
                 </plugins>
