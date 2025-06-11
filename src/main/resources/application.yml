@@ -17,6 +17,22 @@ app:
       net.urosk.upravnikpredstavnik.ui.views.CaseDetailView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
       net.urosk.upravnikpredstavnik.ui.views.AdminView: [ROLE_ADMINISTRATOR]
 
+
+  # --- NOV RAZDELEK ZA DEFINICIJO MENIJA ---
+  menu:
+    items:
+      - view: net.urosk.upravnikpredstavnik.ui.views.AdminView
+        icon: COG
+        tooltip: "Administracija"
+      - view: net.urosk.upravnikpredstavnik.ui.views.ResidentView
+        icon: FILE_TEXT
+        tooltip: "Moje zadeve"
+      - view: net.urosk.upravnikpredstavnik.ui.views.ManagerKanbanView
+        icon: LIST
+        tooltip: "Kanban"
+      - view: net.urosk.upravnikpredstavnik.ui.views.CalendarView
+        icon: CALENDAR
+        tooltip: "Koledar"
   # --- NOV RAZDELEK ZA STATUSE ---
   process:
     statuses:

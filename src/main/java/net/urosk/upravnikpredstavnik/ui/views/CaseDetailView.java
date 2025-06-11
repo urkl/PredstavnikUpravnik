@@ -152,13 +152,20 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
         if (parameter != null && !parameter.isEmpty()) {
             Optional<Case> caseOpt = caseRepository.findById(parameter);
             if (caseOpt.isPresent()) {
+
+                status.setItems(appProcessProperties.getStatuses().keySet());
+                // Določimo, kako se prikažejo uporabniku (npr. "V pregledu")
+                status.setItemLabelGenerator(statusKey ->
+                        appProcessProperties.getStatuses().get(statusKey));
+
+
                 currentCase = caseOpt.get();
                 binder.setBean(currentCase);
                 filesGrid.setItems(currentCase.getAttachedFiles());
 
                 // Pravilna nastavitev ComboBox-a
-                status.setItems(appProcessProperties.getStatuses().keySet());
-                status.setItemLabelGenerator(statusKey -> appProcessProperties.getStatuses().get(statusKey));
+
+
                 status.setValue(currentCase.getStatus()); // Nastavi trenutno vrednost
             } else {
                 UI.getCurrent().navigate(ManagerKanbanView.class);

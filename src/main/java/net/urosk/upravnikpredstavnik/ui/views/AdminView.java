@@ -47,8 +47,8 @@ public class AdminView extends VerticalLayout {
                 .set("box-shadow", "0 4px 16px rgba(0,0,0,0.2)")
                 .set("padding", "1.5rem");
         rolesSelect.setAutoExpand(MultiSelectComboBox.AutoExpandMode.BOTH);
-        formLayout.addFormItem(rolesSelect,"Vloge");
-        formLayout.addFormItem(saveButton, "Save");
+        formLayout.add(rolesSelect,1);
+        formLayout.add(saveButton,1);
         add(title, userGrid, formLayout);
         refreshGrid();
     }

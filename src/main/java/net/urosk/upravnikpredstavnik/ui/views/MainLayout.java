@@ -3,94 +3,120 @@ package net.urosk.upravnikpredstavnik.ui.views;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.avatar.Avatar;
-import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.contextmenu.ContextMenu;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.RouterLink;
+import net.urosk.upravnikpredstavnik.config.AppMenuProperties;
 import net.urosk.upravnikpredstavnik.data.entity.User;
+import net.urosk.upravnikpredstavnik.security.AppSecurityProperties;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
-import java.util.List; // <-- NOV UVOZ
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 public class MainLayout extends AppLayout {
 
     private final AuthenticatedUser authenticatedUser;
+    private final AppMenuProperties menuProperties;
+    private final AppSecurityProperties securityProperties;
 
-    public MainLayout(AuthenticatedUser authenticatedUser) {
+    public MainLayout(AuthenticatedUser authenticatedUser, AppMenuProperties menuProperties, AppSecurityProperties securityProperties) {
         this.authenticatedUser = authenticatedUser;
+        this.menuProperties = menuProperties;
+        this.securityProperties = securityProperties;
+        addClassName("main-layout-dark-navbar");
         createTopNavBar();
     }
 
     private void createTopNavBar() {
         H1 logo = new H1("Upravnik & Predstavnik");
         logo.addClassNames("text-l", "m-m");
+        logo.getStyle().set("color", "white");
 
         HorizontalLayout navIcons = new HorizontalLayout();
         navIcons.setSpacing(true);
+        navIcons.setAlignItems(FlexComponent.Alignment.CENTER);
 
         Optional<User> maybeUser = authenticatedUser.get();
         if (maybeUser.isPresent()) {
             User user = maybeUser.get();
+            Set<String> userRoles = user.getRoles();
 
-            // --- ZAČETEK POPRAVKA ---
-            // Pridobimo seznam vlog uporabnika (ki so sedaj nizi)
-            Set<String> roles = user.getRoles();
+            // Dinamično grajenje menija
+            menuProperties.getItems().forEach(item -> {
+                if (isAccessGranted(item.getView(), userRoles)) {
+                    try {
+                        VaadinIcon vaadinIcon = VaadinIcon.valueOf(item.getIcon());
+                        Class<? extends Component> viewClass = (Class<? extends Component>) Class.forName(item.getView());
+                        navIcons.add(createIconLink(vaadinIcon, item.getTooltip(), viewClass));
+                    } catch (ClassNotFoundException e) {
+                        System.err.println("Meni-item error: Razred ni najden: " + item.getView());
+                    }
+                }
+            });
 
-            // Prikaz ikon glede na to, ali seznam vsebuje določeno vlogo
-            if (roles.contains("STANOVALEC")) {
-                navIcons.add(createIconLink(VaadinIcon.FILE_TEXT, "Moje zadeve", ResidentView.class));
-            }
+            // --- ZAČETEK POPRAVKA: Pravilno ustvarjanje uporabniškega menija ---
 
-            if (roles.contains("ROLE_UPRAVNIK") || roles.contains("ROLE_PREDSTAVNIK")) {
-                navIcons.add(
-                        createIconLink(VaadinIcon.CALENDAR, "Koledar", CalendarView.class),
-                        createIconLink(VaadinIcon.LIST, "Kanban", ManagerKanbanView.class),
-                        createIconLink(VaadinIcon.USER,"Predlog",ResidentView.class)
-                );
-            }
-            if(roles.contains("ROLE_STANOVALEC")) {
-                navIcons.add(
-                  createIconLink(VaadinIcon.USER,"Predlog",ResidentView.class)
-                );
-            }
-            // --- KONEC POPRAVKA ---
-
+            // 1. Ustvarimo vidni del (Avatar)
             Avatar avatar = new Avatar(user.getName());
-            Span userName = new Span(user.getName());
-            Button logoutButton = new Button("Odjava", e -> authenticatedUser.logout());
+            avatar.getStyle().set("cursor", "pointer");
 
-            HorizontalLayout userInfo = new HorizontalLayout(avatar, userName, logoutButton);
+            // 2. Ustvarimo nevidni del (ContextMenu)
+            ContextMenu userMenu = new ContextMenu();
+            userMenu.setTarget(avatar);
+            userMenu.setOpenOnClick(true);
+            userMenu.addItem(user.getName(), e -> {});
+            userMenu.add(new Hr());
+            userMenu.addItem("Odjava", e -> authenticatedUser.logout());
+
+            // 3. Kontejner, ki bo vseboval oba dela - avatar in meni.
+            // S tem zagotovimo, da sta oba dela v komponentnem drevesu.
+            HorizontalLayout userInfo = new HorizontalLayout(avatar, userMenu);
             userInfo.setAlignItems(FlexComponent.Alignment.CENTER);
+
+            // --- KONEC POPRAVKA ---
 
             HorizontalLayout header = new HorizontalLayout(logo, navIcons);
             header.setAlignItems(FlexComponent.Alignment.CENTER);
-            header.expand(logo);
-            header.setWidthFull();
-            header.setPadding(true);
             header.setSpacing(true);
 
             HorizontalLayout fullBar = new HorizontalLayout(header, userInfo);
             fullBar.setWidthFull();
             fullBar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
             fullBar.setAlignItems(FlexComponent.Alignment.CENTER);
+            fullBar.getStyle().set("padding", "0 1rem").set("height", "var(--lumo-size-xl)");
+
             addToNavbar(fullBar);
         }
     }
 
+    // Pomožna metoda `createUserMenu` ni več potrebna, ker smo logiko poenostavili.
+
+    private boolean isAccessGranted(String viewClassName, Set<String> userRoles) {
+        List<String> requiredRoles = securityProperties.getViewAccess().get(viewClassName);
+        if (requiredRoles == null || requiredRoles.isEmpty()) {
+            return true;
+        }
+        return !Collections.disjoint(userRoles, requiredRoles);
+    }
+
     private RouterLink createIconLink(VaadinIcon icon, String tooltip, Class<? extends Component> navigationTarget) {
         Icon vaadinIcon = icon.create();
+        vaadinIcon.setSize("24px");
+        vaadinIcon.getStyle().set("color", "white");
         vaadinIcon.getStyle().set("cursor", "pointer");
         vaadinIcon.getElement().setProperty("title", tooltip);
 
         RouterLink link = new RouterLink(navigationTarget);
+        link.getStyle().set("display", "flex").set("align-items", "center").set("height", "100%");
         link.add(vaadinIcon);
-        link.getElement().getStyle().set("padding", "0.5rem");
         return link;
     }
 }
