@@ -112,7 +112,7 @@ public class ResidentView extends VerticalLayout {
         binder.forField(descriptionField).asRequired("Opis je obvezen.").bind(Case::getDescription, Case::setDescription);
         // SPREMENJENO: Poveži MultiSelectComboBox s Set<Building>
         binder.forField(buildingSelect)
-                .asRequired("Izbira objekta je obvezna.")
+//                .asRequired("Izbira objekta je obvezna.")
                 .bind(
                         Case::getBuildings,
                         (caseObject, selectedBuildings) -> caseObject.setBuildings(new HashSet<>(selectedBuildings)) // Pretvori Collection v HashSet

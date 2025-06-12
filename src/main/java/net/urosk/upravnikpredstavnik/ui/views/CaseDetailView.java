@@ -12,6 +12,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -29,6 +30,7 @@ import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
@@ -36,10 +38,13 @@ import net.urosk.upravnikpredstavnik.data.entity.AttachedFile;
 import net.urosk.upravnikpredstavnik.data.entity.Building;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.Subtask;
+import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,6 +67,7 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
     private final AppProcessProperties appProcessProperties;
     private final AppSecurityProperties appSecurityProperties;
     private final BuildingRepository buildingRepository;
+    private final AuthenticatedUser authenticatedUser;
     private Case currentCase;
 
     private final Binder<Case> binder = new Binder<>(Case.class);
@@ -72,13 +78,14 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
     private final DatePicker startDatePicker = new DatePicker("Datum začetka");
     private final DatePicker endDatePicker = new DatePicker("Datum zaključka");
 
-    private final Grid<AttachedFile> filesGrid = new Grid<>(AttachedFile.class);
+    private final Grid<AttachedFile> filesGrid = new Grid<>();
     private final Upload upload = new Upload();
 
     private final VerticalLayout subtaskComponent = new VerticalLayout();
 
-    public CaseDetailView(CaseRepository caseRepository, AppProcessProperties appProcessProperties, AppSecurityProperties appSecurityProperties, BuildingRepository buildingRepository) {
+    public CaseDetailView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties, AppSecurityProperties appSecurityProperties, BuildingRepository buildingRepository) {
         this.caseRepository = caseRepository;
+        this.authenticatedUser = authenticatedUser;
         this.appProcessProperties = appProcessProperties;
         this.appSecurityProperties = appSecurityProperties;
         this.buildingRepository = buildingRepository;
@@ -146,21 +153,76 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
                 currentCase.setAttachedFiles(new ArrayList<>());
             }
             currentCase.getAttachedFiles().add(file);
-            filesGrid.setItems(currentCase.getAttachedFiles());
+            currentCase.setLastModifiedDate(LocalDateTime.now()); // Posodobi datum zadnje spremembe
+            caseRepository.save(currentCase); // TAKOJ SHRANI ZADEVO Z NOVO DATOTEKO
+            filesGrid.setItems(currentCase.getAttachedFiles()); // Osveži tabelo
             dialog.close();
-            Notification.show("Datoteka dodana.");
+            Notification.show("Datoteka dodana in zadeva shranjena.", 2000, Notification.Position.TOP_CENTER)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
         dialog.add(new VerticalLayout(commentField, confirmButton));
         dialog.open();
     }
 
     private void configureFilesGrid() {
-        filesGrid.setColumns("fileName", "comment");
-        filesGrid.addComponentColumn(file -> new Button("Izbriši", e -> {
-            currentCase.getAttachedFiles().remove(file);
-            filesGrid.setItems(currentCase.getAttachedFiles());
-        })).setHeader("Dejanja");
+        filesGrid.addColumn(AttachedFile::getFileName).setHeader("Ime datoteke").setAutoWidth(true);
+        filesGrid.addColumn(AttachedFile::getComment).setHeader("Komentar").setAutoWidth(true);
+
+        filesGrid.addComponentColumn(file -> {
+            HorizontalLayout actions = new HorizontalLayout();
+            actions.setAlignItems(FlexComponent.Alignment.CENTER);
+
+            StreamResource resource = new StreamResource(file.getFileName(), () -> new ByteArrayInputStream(file.getContent()));
+            Anchor downloadLink = new Anchor(resource, "Prenesi");
+            downloadLink.getElement().setAttribute("download", true);
+            downloadLink.getStyle().set("text-decoration", "none");
+
+            Button downloadButton = new Button(new Icon(VaadinIcon.DOWNLOAD));
+            downloadButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+            downloadLink.add(downloadButton);
+
+            actions.add(downloadLink);
+
+            Button deleteBtn = new Button(new Icon(VaadinIcon.TRASH));
+            deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteBtn.setTooltipText("Izbriši datoteko");
+            deleteBtn.addClickListener(e -> showDeleteFileConfirmation(file));
+
+            boolean canDelete = authenticatedUser.get().map(user ->
+                    user.getRoles().contains("ROLE_ADMINISTRATOR") ||
+                            user.getRoles().contains("ROLE_UPRAVNIK") ||
+                            user.getRoles().contains("ROLE_PREDSTAVNIK")
+            ).orElse(false);
+            deleteBtn.setVisible(canDelete);
+
+            actions.add(deleteBtn);
+            return actions;
+        }).setHeader("Dejanja").setAutoWidth(true);
     }
+
+    private void showDeleteFileConfirmation(AttachedFile fileToDelete) {
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Potrditev brisanja datoteke");
+        dialog.setText("Ali res želite trajno izbrisati datoteko '" + fileToDelete.getFileName() + "'?");
+        dialog.setConfirmText("Izbriši");
+        dialog.setConfirmButtonTheme(ButtonVariant.LUMO_ERROR.getVariantName());
+        dialog.addConfirmListener(event -> deleteAttachedFile(fileToDelete));
+        dialog.setCancelable(true);
+        dialog.setCancelText("Prekliči");
+        dialog.open();
+    }
+
+    private void deleteAttachedFile(AttachedFile fileToDelete) {
+        if (currentCase.getAttachedFiles() != null) {
+            currentCase.getAttachedFiles().remove(fileToDelete);
+            currentCase.setLastModifiedDate(LocalDateTime.now()); // Posodobi datum zadnje spremembe
+            caseRepository.save(currentCase); // TAKOJ SHRANI ZADEVO PO IZBRISU DATOTEKE
+            Notification.show("Datoteka '" + fileToDelete.getFileName() + "' izbrisana.", 2000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            filesGrid.setItems(currentCase.getAttachedFiles()); // Osveži tabelo
+        }
+    }
+
 
     private void configureBuildingSelect() {
         buildingSelect.setItems(buildingRepository.findAll());
@@ -178,18 +240,14 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
 
         binder.forField(startDatePicker)
                 .withConverter(
-                        // POPRAVEK: Obravnavanje null vrednosti pri pretvorbi LocalDate v LocalDateTime
                         localDate -> localDate == null ? null : localDate.atStartOfDay(),
-                        // Obravnavanje null vrednosti pri pretvorbi LocalDateTime v LocalDate
                         localDateTime -> localDateTime == null ? null : localDateTime.toLocalDate()
                 )
                 .bind(Case::getStartDate, Case::setStartDate);
 
         binder.forField(endDatePicker)
                 .withConverter(
-                        // POPRAVEK: Obravnavanje null vrednosti pri pretvorbi LocalDate v LocalDateTime
                         localDate -> localDate == null ? null : localDate.atTime(23, 59, 59),
-                        // Obravnavanje null vrednosti pri pretvorbi LocalDateTime v LocalDate
                         localDateTime -> localDateTime == null ? null : localDateTime.toLocalDate()
                 )
                 .bind(Case::getEndDate, Case::setEndDate);
