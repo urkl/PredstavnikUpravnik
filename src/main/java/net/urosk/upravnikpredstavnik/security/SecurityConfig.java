@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+
 
 
 @EnableWebSecurity
@@ -36,9 +36,8 @@ public class SecurityConfig extends VaadinWebSecurity {
                         .requestMatchers("/images/**").permitAll() // Splošne slike
                         .requestMatchers("/themes/**").permitAll() // Teme
                         .requestMatchers("/images/*.png").permitAll() // Specifične PNG slike (verjetno redundantno)
+                        .requestMatchers("/line-awesome/**").permitAll() // TO JE PREDLAGANI POPRAVEK
 
-                        // Ikone iz line-awesome addona
-                        .requestMatchers("/line-awesome/**/*.svg").permitAll()
 
                 // Tukaj dodajte vse druge poti, ki morajo biti javno dostopne
                 // .requestMatchers("/moja-javna-pot/**").permitAll()
