@@ -3,6 +3,7 @@ package net.urosk.upravnikpredstavnik.ui.views;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Anchor;
@@ -28,8 +29,10 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.data.entity.AttachedFile;
+import net.urosk.upravnikpredstavnik.data.entity.Building;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.User;
+import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
@@ -41,6 +44,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Route(value = "", layout = MainLayout.class)
 @PageTitle("Moje Zadeve")
@@ -49,22 +54,22 @@ public class ResidentView extends VerticalLayout {
     private final CaseRepository caseRepository;
     private final AuthenticatedUser authenticatedUser;
     private final AppProcessProperties appProcessProperties;
+    private final BuildingRepository buildingRepository;
 
     private final VerticalLayout casesLayout;
     private final Optional<User> maybeUser;
 
-    public ResidentView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties) {
+    public ResidentView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties, BuildingRepository buildingRepository) {
         this.caseRepository = caseRepository;
         this.authenticatedUser = authenticatedUser;
         this.appProcessProperties = appProcessProperties;
+        this.buildingRepository = buildingRepository;
         this.maybeUser = this.authenticatedUser.get();
 
-        // Glavni layout je centriran
         setAlignItems(Alignment.CENTER);
         setPadding(true);
         addClassName("resident-view");
 
-        // Vsebinski ovoj z omejeno širino
         Div contentWrapper = new Div();
         contentWrapper.setMaxWidth("800px");
         contentWrapper.setWidthFull();
@@ -94,11 +99,20 @@ public class ResidentView extends VerticalLayout {
         TextField titleField = new TextField("Naslov zadeve");
         TextArea descriptionField = new TextArea("Opis");
 
-        FormLayout formLayout = new FormLayout(titleField, descriptionField);
+        MultiSelectComboBox<Building> buildingSelect = new MultiSelectComboBox<>("Izberi objekte");
+        buildingSelect.setItems(buildingRepository.findAll());
+        buildingSelect.setItemLabelGenerator(Building::getName);
+        buildingSelect.setPlaceholder("Izberite enega ali več objektov");
+        buildingSelect.setWidthFull();
+
+        FormLayout formLayout = new FormLayout(titleField, descriptionField, buildingSelect);
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         binder.forField(titleField).asRequired("Naslov je obvezen.").bind(Case::getTitle, Case::setTitle);
         binder.forField(descriptionField).asRequired("Opis je obvezen.").bind(Case::getDescription, Case::setDescription);
+        binder.forField(buildingSelect)
+                .asRequired("Izbira objekta je obvezna.")
+                .bind(Case::getBuildings, Case::setBuildings);
 
         MultiFileMemoryBuffer buffer = new MultiFileMemoryBuffer();
         Upload upload = new Upload(buffer);
@@ -116,31 +130,36 @@ public class ResidentView extends VerticalLayout {
             }
 
             Case newCase = new Case();
-            if (binder.writeBeanIfValid(newCase)) {
-                newCase.setAuthor(maybeUser.get());
-                newCase.setStatus(appProcessProperties.getDefaultStatus());
-                newCase.setCreatedDate(LocalDateTime.now());
-                newCase.setLastModifiedDate(LocalDateTime.now());
+            try {
+                if (binder.writeBeanIfValid(newCase)) {
+                    newCase.setAuthor(maybeUser.get());
+                    newCase.setStatus(appProcessProperties.getDefaultStatus());
+                    newCase.setCreatedDate(LocalDateTime.now());
+                    newCase.setLastModifiedDate(LocalDateTime.now());
 
-                List<AttachedFile> attachedFiles = new ArrayList<>();
-                buffer.getFiles().forEach(fileName -> {
-                    try (InputStream inputStream = buffer.getInputStream(fileName)) {
-                        byte[] content = inputStream.readAllBytes();
-                        String mimeType = buffer.getFileData(fileName).getMimeType();
-                        attachedFiles.add(new AttachedFile(fileName, mimeType, content));
-                    } catch (IOException e) {
-                        Notification.show("Napaka pri branju datoteke: " + fileName, 3000, Notification.Position.MIDDLE);
-                    }
-                });
-                newCase.setAttachedFiles(attachedFiles);
+                    List<AttachedFile> attachedFiles = new ArrayList<>();
+                    buffer.getFiles().forEach(fileName -> {
+                        try (InputStream inputStream = buffer.getInputStream(fileName)) {
+                            byte[] content = inputStream.readAllBytes();
+                            String mimeType = buffer.getFileData(fileName).getMimeType();
+                            attachedFiles.add(new AttachedFile(fileName, mimeType, content));
+                        } catch (IOException e) {
+                            Notification.show("Napaka pri branju datoteke: " + fileName, 3000, Notification.Position.MIDDLE);
+                        }
+                    });
+                    newCase.setAttachedFiles(attachedFiles);
 
-                caseRepository.save(newCase);
-                Notification.show("Zadeva uspešno dodana!", 2000, Notification.Position.TOP_CENTER);
-                binder.readBean(new Case());
-                upload.clearFileList();
-                refreshCasesList();
-            } else {
-                Notification.show("Prosimo, izpolnite vsa obvezna polja.", 3000, Notification.Position.MIDDLE);
+                    caseRepository.save(newCase);
+                    Notification.show("Zadeva uspešno dodana!", 2000, Notification.Position.TOP_CENTER);
+                    binder.readBean(new Case());
+                    upload.clearFileList();
+                    buildingSelect.clear();
+                    refreshCasesList();
+                } else {
+                    Notification.show("Prosimo, izpolnite vsa obvezna polja in pravilno izberite objekte.", 3000, Notification.Position.MIDDLE);
+                }
+            } catch (Exception e) {
+                Notification.show("Napaka pri shranjevanju: " + e.getMessage(), 3000, Notification.Position.MIDDLE);
             }
         });
 
@@ -151,7 +170,13 @@ public class ResidentView extends VerticalLayout {
     private void refreshCasesList() {
         casesLayout.removeAll();
         maybeUser.ifPresent(user -> {
-            List<Case> cases = caseRepository.findFirst10ByAuthorIdOrderByCreatedDateDesc(user.getId());
+            List<Case> cases;
+            if (user.getRoles().contains("ROLE_UPRAVNIK") || user.getRoles().contains("ROLE_PREDSTAVNIK") || user.getRoles().contains("ROLE_ADMINISTRATOR")) {
+                cases = caseRepository.findAll();
+            } else {
+                cases = caseRepository.findFirst10ByAuthorIdOrderByCreatedDateDesc(user.getId());
+            }
+
             if (cases.isEmpty()) {
                 casesLayout.add(new Span("Nimate še nobene odprte zadeve."));
             } else {
@@ -165,7 +190,6 @@ public class ResidentView extends VerticalLayout {
         card.setWidthFull();
         card.addClassName("resident-case-card");
 
-        // Glava kartice
         H3 title = new H3(caseItem.getTitle());
         title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
         Span status = new Span(appProcessProperties.getStatuses().get(caseItem.getStatus()));
@@ -178,21 +202,46 @@ public class ResidentView extends VerticalLayout {
         header.setAlignItems(FlexComponent.Alignment.BASELINE);
         header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
-        // Vsebina kartice
         Div content = new Div();
         content.addClassNames(LumoUtility.Margin.Vertical.MEDIUM);
         content.setText(caseItem.getDescription());
+        card.add(content); // Dodaj opis takoj
 
-        // Priloge
+        // NOV DODATEK: Prikaz objektov z ikono in lepim oblikovanjem
+        if (caseItem.getBuildings() != null && !caseItem.getBuildings().isEmpty()) {
+            HorizontalLayout buildingsLayout = new HorizontalLayout();
+            buildingsLayout.setAlignItems(FlexComponent.Alignment.CENTER);
+            buildingsLayout.setSpacing(true); // Poveča razmik med ikono in besedilom
+            buildingsLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL, LumoUtility.Padding.Horizontal.SMALL); // Dodani robovi za lepši videz
+
+            Icon buildingIcon = VaadinIcon.HOME_O.create(); // Ikona hiše/zgradbe
+            buildingIcon.setColor("var(--lumo-contrast-50pct)"); // Siva barva za ikono
+            buildingIcon.setSize("16px"); // Manjša velikost ikone
+
+            String buildingNames = caseItem.getBuildings().stream()
+                    .map(Building::getName)
+                    .collect(Collectors.joining(", "));
+            Span buildingsSpan = new Span(buildingNames);
+            buildingsSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY); // Manjša pisava in sekundarna barva
+
+            buildingsLayout.add(buildingIcon, buildingsSpan);
+            card.add(buildingsLayout); // Dodaj layout objektov v kartico
+        }
+
         VerticalLayout attachmentsLayout = createAttachmentsLayout(caseItem);
 
-        // Noga kartice
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d. M. yyyy 'ob' HH:mm");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d. M.yyyy 'ob' HH:mm");
         Span timeInfo = new Span("Oddano: " + caseItem.getCreatedDate().format(formatter));
         timeInfo.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.TERTIARY);
 
         Div actions = new Div();
-        if ("PREDLOG".equals(caseItem.getStatus())) {
+        boolean canDelete = maybeUser.isPresent() &&
+                (caseItem.getAuthor().getId().equals(maybeUser.get().getId()) ||
+                        maybeUser.get().getRoles().contains("ROLE_ADMINISTRATOR") ||
+                        maybeUser.get().getRoles().contains("ROLE_UPRAVNIK") ||
+                        maybeUser.get().getRoles().contains("ROLE_PREDSTAVNIK"));
+
+        if ("PREDLOG".equals(caseItem.getStatus()) && canDelete) {
             Button deleteBtn = new Button("Izbriši", new Icon(VaadinIcon.TRASH));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
             deleteBtn.addClickListener(e -> showDeleteConfirmation(caseItem));
@@ -203,7 +252,7 @@ public class ResidentView extends VerticalLayout {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         footer.setWidthFull();
 
-        card.add(header, content, attachmentsLayout, footer);
+        card.add(header, attachmentsLayout, footer); // Odstranil sem 'content' tukaj, ker je bil že dodan prej
         return card;
     }
 

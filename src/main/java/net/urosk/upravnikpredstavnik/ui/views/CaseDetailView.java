@@ -5,6 +5,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox; // NOV UVOZ
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
@@ -29,8 +30,10 @@ import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
 import net.urosk.upravnikpredstavnik.data.entity.AttachedFile;
+import net.urosk.upravnikpredstavnik.data.entity.Building; // NOV UVOZ
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.Subtask;
+import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository; // NOV UVOZ
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 
 import java.io.ByteArrayOutputStream;
@@ -39,6 +42,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List; // NOV UVOZ
 import java.util.Optional;
 
 @Route(value = "zadeva", layout = MainLayout.class)
@@ -49,21 +53,24 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
     private final CaseRepository caseRepository;
     private final AppProcessProperties appProcessProperties;
     private final AppSecurityProperties appSecurityProperties;
+    private final BuildingRepository buildingRepository; // NOV DODATEK
     private Case currentCase;
 
     private final Binder<Case> binder = new Binder<>(Case.class);
     private final TextField title = new TextField("Naslov");
     private final TextArea description = new TextArea("Opis");
     private final ComboBox<String> status = new ComboBox<>("Status");
+    private final MultiSelectComboBox<Building> buildingSelect = new MultiSelectComboBox<>("Izberi objekte"); // NOV DODATEK
     private final Grid<AttachedFile> filesGrid = new Grid<>(AttachedFile.class);
     private final Upload upload = new Upload();
 
     private final VerticalLayout subtaskComponent = new VerticalLayout();
 
-    public CaseDetailView(CaseRepository caseRepository, AppProcessProperties appProcessProperties, AppSecurityProperties appSecurityProperties) {
+    public CaseDetailView(CaseRepository caseRepository, AppProcessProperties appProcessProperties, AppSecurityProperties appSecurityProperties, BuildingRepository buildingRepository) { // NOV PARAMETER
         this.caseRepository = caseRepository;
         this.appProcessProperties = appProcessProperties;
         this.appSecurityProperties = appSecurityProperties;
+        this.buildingRepository = buildingRepository; // NOV DODATEK
 
         setMaxWidth("900px");
         getStyle().set("margin", "0 auto");
@@ -73,11 +80,13 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
                 .set("padding", "1.5rem");
 
         H2 header = new H2("Urejanje zadeve");
-        FormLayout formLayout = new FormLayout(title, description, status);
+        // Posodobljen FormLayout za vključitev buildingSelect
+        FormLayout formLayout = new FormLayout(title, description, status, buildingSelect); // NOV DODATEK
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         configureUploader();
         configureFilesGrid();
+        configureBuildingSelect(); // NOV DODATEK
 
         subtaskComponent.setPadding(false);
         subtaskComponent.setSpacing(false);
@@ -141,6 +150,12 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
             currentCase.getAttachedFiles().remove(file);
             filesGrid.setItems(currentCase.getAttachedFiles());
         })).setHeader("Dejanja");
+    }
+
+    // NOV DODATEK: Konfiguracija MultiSelectComboBox za objekte
+    private void configureBuildingSelect() {
+        buildingSelect.setItems(buildingRepository.findAll()); // Naloži vse objekte iz baze
+        buildingSelect.setItemLabelGenerator(Building::getName); // Prikazuj ime objekta
     }
 
     private void refreshSubtaskComponent() {
@@ -269,6 +284,13 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
 
                 status.setItemLabelGenerator(statusKey -> appProcessProperties.getStatuses().get(statusKey));
                 status.setValue(currentCase.getStatus());
+
+                // NOV DODATEK: Nastavi izbrane objekte v MultiSelectComboBox
+                if (currentCase.getBuildings() != null) {
+                    buildingSelect.setValue(new ArrayList<>(currentCase.getBuildings()));
+                } else {
+                    buildingSelect.clear();
+                }
 
                 if (currentCase.getAttachedFiles() == null) {
                     currentCase.setAttachedFiles(new ArrayList<>());

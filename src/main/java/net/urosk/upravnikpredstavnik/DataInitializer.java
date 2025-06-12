@@ -1,24 +1,29 @@
 package net.urosk.upravnikpredstavnik;
 
+import net.urosk.upravnikpredstavnik.data.entity.Building; // NOV UVOZ
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.User;
+import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository; // NOV UVOZ
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
-import java.util.List; // NOV UVOZ
+import java.util.List;
 import java.util.Set;
+import java.util.ArrayList; // NOV UVOZ
 
 @Component
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final CaseRepository caseRepository;
+    private final BuildingRepository buildingRepository; // NOV DODATEK
 
-    public DataInitializer(UserRepository userRepository, CaseRepository caseRepository) {
+    public DataInitializer(UserRepository userRepository, CaseRepository caseRepository, BuildingRepository buildingRepository) {
         this.userRepository = userRepository;
         this.caseRepository = caseRepository;
+        this.buildingRepository = buildingRepository; // NOV DODATEK
     }
 
     @Override
@@ -27,6 +32,7 @@ public class DataInitializer implements CommandLineRunner {
             // Počisti obstoječe podatke (samo za razvoj)
             userRepository.deleteAll();
             caseRepository.deleteAll();
+            buildingRepository.deleteAll(); // NOV DODATEK
 
             // --- SPREMEMBE SPODAJ ---
 
@@ -52,7 +58,34 @@ public class DataInitializer implements CommandLineRunner {
             predstavnik.setActivated(true);
             userRepository.save(predstavnik);
 
-            // Ustvari zadeve s statusi kot nizi
+            // NOV DODATEK: Ustvari objekte (Building)
+            Building building1 = new Building();
+            building1.setName("Sončni Dvor");
+            building1.setAddress("Sončna ulica 1, Ljubljana");
+            buildingRepository.save(building1);
+
+            Building building2 = new Building();
+            building2.setName("Mestna Rezidenca");
+            building2.setAddress("Glavna cesta 15, Maribor");
+            buildingRepository.save(building2);
+
+            Building building3 = new Building();
+            building3.setName("Gorski Apartmaji");
+            building3.setAddress("Planinska pot 3, Bled");
+            buildingRepository.save(building3);
+
+            // NOV DODATEK: Poveži uporabnike z objekti, ki jih upravljajo
+            upravnik.setManagedBuildings(Set.of(building1, building2, building3));
+            userRepository.save(upravnik);
+
+            predstavnik.setManagedBuildings(Set.of(building1));
+            userRepository.save(predstavnik);
+
+            stanovalec.setManagedBuildings(Set.of(building2)); // Stanovalec pripada eni zgradbi
+            userRepository.save(stanovalec);
+
+
+            // Ustvari zadeve s statusi kot nizi in dodaj objekte
             Case case1 = new Case();
             case1.setTitle("Menjava žarnice v 2. nadstropju");
             case1.setDescription("Žarnica na hodniku pred stanovanjem št. 12 ne deluje.");
@@ -61,6 +94,7 @@ public class DataInitializer implements CommandLineRunner {
             case1.setAssignedTo(upravnik);
             case1.setCreatedDate(LocalDateTime.now().minusDays(2));
             case1.setLastModifiedDate(LocalDateTime.now().minusDays(2));
+            case1.setBuildings(Set.of(building2)); // Poveži z zgradbo 2
             caseRepository.save(case1);
 
             Case case2 = new Case();
@@ -71,6 +105,7 @@ public class DataInitializer implements CommandLineRunner {
             case2.setAssignedTo(upravnik);
             case2.setCreatedDate(LocalDateTime.now().minusDays(10));
             case2.setLastModifiedDate(LocalDateTime.now().minusDays(1));
+            case2.setBuildings(Set.of(building1)); // Poveži z zgradbo 1
             caseRepository.save(case2);
 
             Case case3 = new Case();
@@ -81,6 +116,7 @@ public class DataInitializer implements CommandLineRunner {
             case3.setAssignedTo(upravnik);
             case3.setCreatedDate(LocalDateTime.now().minusMonths(1));
             case3.setLastModifiedDate(LocalDateTime.now().minusWeeks(2));
+            case3.setBuildings(Set.of(building2, building3)); // Poveži z zgradbo 2 in 3
             caseRepository.save(case3);
 
             System.out.println("Vzorčni podatki so bili uspešno ustvarjeni.");

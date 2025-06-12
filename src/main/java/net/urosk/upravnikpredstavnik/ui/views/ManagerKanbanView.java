@@ -27,12 +27,14 @@ import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.Subtask;
+import net.urosk.upravnikpredstavnik.data.entity.Building; // NOV UVOZ
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors; // NOV UVOZ
 
 @Route(value = "kanban", layout = MainLayout.class)
 @PageTitle("Kanban Pregled")
@@ -89,11 +91,10 @@ public class ManagerKanbanView extends HorizontalLayout {
     }
 
     private void loadAndDisplayCases() {
-        // Počistimo stolpce pred ponovnim risanjem
         statusColumns.values().forEach(column -> {
             column.getChildren()
                     .filter(component -> component instanceof Card)
-                    .toList() // Uporabimo toList(), da se izognemo ConcurrentModificationException
+                    .toList()
                     .forEach(column::remove);
         });
 
@@ -138,6 +139,27 @@ public class ManagerKanbanView extends HorizontalLayout {
         description.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.Top.SMALL);
         card.add(description);
 
+        // NOV DODATEK: Prikaz objektov z ikono
+        if (caseItem.getBuildings() != null && !caseItem.getBuildings().isEmpty()) {
+            HorizontalLayout buildingsLayout = new HorizontalLayout();
+            buildingsLayout.setAlignItems(Alignment.CENTER);
+            buildingsLayout.setSpacing(true);
+            buildingsLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL);
+
+            Icon buildingIcon = VaadinIcon.HOME_O.create();
+            buildingIcon.setColor("var(--lumo-contrast-50pct)"); // Siva barva za ikono
+            buildingIcon.setSize("16px");
+
+            String buildingNames = caseItem.getBuildings().stream()
+                    .map(Building::getName)
+                    .collect(Collectors.joining(", "));
+            Span buildingsSpan = new Span(buildingNames);
+            buildingsSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY);
+
+            buildingsLayout.add(buildingIcon, buildingsSpan);
+            card.add(buildingsLayout);
+        }
+
         // --- PODNALOGE (SUBTASKS) ---
         VerticalLayout subtasksContainer = new VerticalLayout();
         subtasksContainer.setPadding(false);
@@ -147,7 +169,7 @@ public class ManagerKanbanView extends HorizontalLayout {
         ProgressBar progressBar = createSubtaskProgressBar(caseItem);
         subtasksContainer.add(progressBar);
 
-        VerticalLayout checkboxLayout = new VerticalLayout(); // Nov layout samo za checkboxe
+        VerticalLayout checkboxLayout = new VerticalLayout();
         checkboxLayout.setPadding(false);
         checkboxLayout.setSpacing(false);
 
@@ -240,10 +262,9 @@ public class ManagerKanbanView extends HorizontalLayout {
                 caseItem.getSubtasks().add(newSubtask);
                 caseRepository.save(caseItem);
 
-                // --- POPRAVEK: CILJANO DODAJANJE NAMESTO OSVEŽEVANJA CELOTNE PLOŠČE ---
                 Checkbox newCheckbox = createSubtaskCheckbox(newSubtask, caseItem, progressBar);
-                checkboxLayout.add(newCheckbox); // Dodamo nov checkbox v njegov layout
-                updateProgressBar(progressBar, caseItem); // Posodobimo progress bar
+                checkboxLayout.add(newCheckbox);
+                updateProgressBar(progressBar, caseItem);
 
                 newSubtaskField.clear();
                 addSubtaskRow.setVisible(false);
@@ -297,7 +318,7 @@ public class ManagerKanbanView extends HorizontalLayout {
         if (duration.toHours() < 24) return "pred " + duration.toHours() + " urami";
         if (duration.toDays() < 7) return "pred " + duration.toDays() + " dnevi";
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d. MMMM yyyy", new Locale("sl", "SI"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d. MMMM yyyy", new Locale("sl", "SI")); // Spremenjen format datuma
         return "dne " + createdDate.format(formatter);
     }
 }

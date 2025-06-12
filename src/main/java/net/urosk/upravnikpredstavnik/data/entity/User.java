@@ -4,6 +4,7 @@ package net.urosk.upravnikpredstavnik.data.entity;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.io.Serializable;
@@ -21,6 +22,7 @@ public class User implements Serializable {
     @Indexed(unique = true)
     private String email;
     private Set<String> roles = new HashSet<>();
-
+    @DBRef //
+    private Set<Building> managedBuildings = new HashSet<>(); // NOV DODATEK
     private boolean activated;
 }

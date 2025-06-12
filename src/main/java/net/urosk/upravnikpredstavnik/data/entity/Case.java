@@ -8,7 +8,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Document(collection = "cases")
@@ -25,7 +27,8 @@ public class Case {
     private List<Comment> comments = new ArrayList<>();
     private List<Subtask> subtasks = new ArrayList<>();
     private List<AttachedFile> attachedFiles = new ArrayList<>();
-
+    @DBRef //
+    private Set<Building> buildings = new HashSet<>(); // NOV DODATEK
     private LocalDateTime createdDate;
     private LocalDateTime lastModifiedDate;
 

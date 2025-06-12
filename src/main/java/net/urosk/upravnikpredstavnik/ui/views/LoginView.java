@@ -25,7 +25,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
 
-        H1 title = new H1("Sistem za upravljanje stavbe");
+        H1 title = new H1("Sistem za komunikacijo med upravnikom, predstavniki in stanovalci");
         title.getStyle().set("color", "white").set("text-shadow", "1px 1px 2px black");
 
         Anchor loginLink = new Anchor(OAUTH_URL, "Prijava z Google računom");
