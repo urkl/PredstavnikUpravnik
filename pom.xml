@@ -15,6 +15,7 @@
         <vaadin.version>24.8.0.rc1</vaadin.version>
         <archunit.version>1.4.1</archunit.version>
         <jib.image.name>upravnik-predstavnik-app</jib.image.name>
+        <flexmark.version>0.64.8</flexmark.version>
 
     </properties>
 
@@ -137,6 +138,13 @@
             <artifactId>archunit-junit5</artifactId>
             <version>${archunit.version}</version>
             <scope>test</scope>
+        </dependency>
+
+
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-all</artifactId>
+            <version>${flexmark.version}</version>
         </dependency>
     </dependencies>
 

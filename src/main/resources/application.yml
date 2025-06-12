@@ -35,6 +35,7 @@ app:
       net.urosk.upravnikpredstavnik.ui.views.CalendarView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
       net.urosk.upravnikpredstavnik.ui.views.CaseDetailView: [ROLE_UPRAVNIK, ROLE_PREDSTAVNIK]
       net.urosk.upravnikpredstavnik.ui.views.AdminView: [ROLE_ADMINISTRATOR]
+
     remember-me-token: erf2šlrmo243imrio23rm23oirm23okemnfoi2w3efmnewofnweofnweffewfnwefewfo2ne392r3
 
 
@@ -53,6 +54,9 @@ app:
       - view: net.urosk.upravnikpredstavnik.ui.views.CalendarView
         icon: CALENDAR
         tooltip: "Koledar"
+      - view: net.urosk.upravnikpredstavnik.ui.views.HelpView # NOV DODATEK ZA HELP VIEW
+        icon: QUESTION_CIRCLE_O # Ikona za vprašaj
+        tooltip: "Pomoč"
 
   process:
     statuses:
