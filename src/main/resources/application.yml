@@ -72,7 +72,6 @@ server:
 
     session:
       persistent: false
-  forward-headers-strategy: FRAMEWORK
 
 spring:
   servlet:

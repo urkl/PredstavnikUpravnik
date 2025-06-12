@@ -23,12 +23,14 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+
+        super.configure(http);
         // Najprej dovolimo dostop do javnih virov
         http.authorizeHttpRequests(auth -> auth.requestMatchers("/images/**", "/themes/**").permitAll());
 
         // --- SPREMEMBA: Klic super.configure() prestavimo na začetek ---
         // To nastavi Vaadinove privzete varnostne nastavitve, ki jih nato povozimo.
-        super.configure(http);
+
         // ----------------------------------------------------------------
 
         // Sedaj definiramo naše lastne nastavitve, ki bodo imele prednost
