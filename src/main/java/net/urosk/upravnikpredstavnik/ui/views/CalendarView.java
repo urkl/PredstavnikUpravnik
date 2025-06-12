@@ -10,6 +10,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
+import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import org.vaadin.stefan.fullcalendar.Entry;
@@ -19,8 +20,10 @@ import org.vaadin.stefan.fullcalendar.dataprovider.InMemoryEntryProvider;
 
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -31,21 +34,24 @@ import java.util.stream.IntStream;
 public class CalendarView extends VerticalLayout {
 
     private final CaseRepository caseRepository;
+    private final AppProcessProperties appProcessProperties;
     private final InMemoryEntryProvider<Entry> entryProvider = new InMemoryEntryProvider<>();
     private final FullCalendar calendar = FullCalendarBuilder.create().build();
     ;
     private final ComboBox<Integer> yearSelect = new ComboBox<>("Leto");
     private final ComboBox<String> monthSelect = new ComboBox<>("Mesec");
 
-    private static final Map<String, Integer> SLO_MONTHS = Map.ofEntries(
-            Map.entry("januar", 1), Map.entry("februar", 2), Map.entry("marec", 3),
-            Map.entry("april", 4), Map.entry("maj", 5), Map.entry("junij", 6),
-            Map.entry("julij", 7), Map.entry("avgust", 8), Map.entry("september", 9),
-            Map.entry("oktober", 10), Map.entry("november", 11), Map.entry("december", 12)
-    );
+    private static final Map<String, Integer> SLO_MONTHS = new HashMap<>();
+    static {
+        for (int i = 1; i <= 12; i++) {
+            SLO_MONTHS.put(java.time.Month.of(i).getDisplayName(TextStyle.FULL, new Locale("sl", "SI")).toLowerCase(), i);
+        }
+    }
 
-    public CalendarView(CaseRepository caseRepository) {
+
+    public CalendarView(CaseRepository caseRepository, AppProcessProperties appProcessProperties) {
         this.caseRepository = caseRepository;
+        this.appProcessProperties = appProcessProperties;
 
         setSizeFull();
         setPadding(true);
@@ -55,7 +61,7 @@ public class CalendarView extends VerticalLayout {
         configureCalendar();
 
         add(createTopBar(), calendar);
-        loadCasesForSelectedMonth(); // začetno nalaganje
+        loadCasesForSelectedMonth();
     }
 
     private void configureTopBar() {
@@ -67,8 +73,9 @@ public class CalendarView extends VerticalLayout {
         yearSelect.setWidth("120px");
 
         List<String> months = new ArrayList<>(SLO_MONTHS.keySet());
+        months.sort(Comparator.comparingInt(s -> SLO_MONTHS.get(s.toLowerCase())));
         monthSelect.setItems(months);
-        monthSelect.setValue(LocalDate.now().getMonth().getDisplayName(java.time.format.TextStyle.FULL, new Locale("sl")));
+        monthSelect.setValue(LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, new Locale("sl", "SI")));
         monthSelect.setWidth("140px");
 
         yearSelect.addValueChangeListener(e -> loadCasesForSelectedMonth());
@@ -84,10 +91,9 @@ public class CalendarView extends VerticalLayout {
     }
 
     private void configureCalendar() {
-    calendar.setSizeFull();
+        calendar.setSizeFull();
         calendar.setEntryProvider(entryProvider);
         calendar.setLocale(Locale.of("sl"));
-        // Dodaj slog za boljšo vidnost na ozadju
         calendar.getStyle().set("background-color", "rgba(255, 255, 255, 0.95)");
         calendar.getStyle().set("border-radius", "12px");
         calendar.getStyle().set("box-shadow", "0 4px 20px rgba(0, 0, 0, 0.2)");
@@ -95,7 +101,22 @@ public class CalendarView extends VerticalLayout {
         calendar.getStyle().set("margin-top", "1rem");
         calendar.addEntryClickedListener(evt -> {
             Entry entry = evt.getEntry();
-            getUI().ifPresent(ui -> ui.getPage().executeJs("alert('Zadeva: ' + $0);", entry.getTitle()));
+            // POPRAVEK: Pridobivanje custom propertyjev
+            String statusKey = (String) entry.getCustomProperty("status"); // Pravilna uporaba getCustomProperty
+            String buildingsValue = (String) entry.getCustomProperty("buildings"); // Pravilna uporaba getCustomProperty
+
+            String statusDisplayName = (statusKey != null && appProcessProperties.getStatuses().containsKey(statusKey))
+                    ? appProcessProperties.getStatuses().get(statusKey)
+                    : "Neznan status";
+
+            String details = "Zadeva: " + entry.getTitle() + "\n";
+            details += "Status: " + statusDisplayName + "\n";
+            details += "Objekt(i): " + (buildingsValue != null ? buildingsValue : "Ni določenih objektov") + "\n"; // Varno preverjanje
+            details += "Od: " + (entry.getStart() != null ? entry.getStart().format(java.time.format.DateTimeFormatter.ofPattern("d.M.yyyy", new Locale("sl", "SI"))) : "N/A") + "\n";
+            details += "Do: " + (entry.getEnd() != null ? entry.getEnd().format(java.time.format.DateTimeFormatter.ofPattern("d.M.yyyy", new Locale("sl", "SI"))) : "N/A");
+
+            String finalDetails = details;
+            getUI().ifPresent(ui -> ui.getPage().executeJs("alert($0);", finalDetails));
         });
     }
 
@@ -103,27 +124,62 @@ public class CalendarView extends VerticalLayout {
         Integer selectedYear = yearSelect.getValue();
         Integer selectedMonth = SLO_MONTHS.get(monthSelect.getValue().toLowerCase());
 
-        if (selectedYear == null || selectedMonth == null) return;
+        if (selectedYear == null || selectedMonth == null) {
+            return;
+        }
 
-        LocalDate start = LocalDate.of(selectedYear, selectedMonth, 1);
-        LocalDate end = start.plusMonths(1).minusDays(1);
+        LocalDate startOfMonth = LocalDate.of(selectedYear, selectedMonth, 1);
+        LocalDate endOfMonth = startOfMonth.plusMonths(1).minusDays(1);
 
         List<Entry> entries = caseRepository.findAll().stream()
-                .filter(c -> c.getCreatedDate() != null)
                 .filter(c -> {
-                    LocalDate created = c.getCreatedDate().toLocalDate();
-                    return !created.isBefore(start) && !created.isAfter(end);
+                    boolean startsInMonth = c.getStartDate() != null && !c.getStartDate().toLocalDate().isAfter(endOfMonth) && !c.getStartDate().toLocalDate().isBefore(startOfMonth);
+                    boolean endsInMonth = c.getEndDate() != null && !c.getEndDate().toLocalDate().isBefore(startOfMonth) && !c.getEndDate().toLocalDate().isAfter(endOfMonth);
+                    boolean createdInMonth = c.getCreatedDate() != null && !c.getCreatedDate().toLocalDate().isAfter(endOfMonth) && !c.getCreatedDate().toLocalDate().isBefore(startOfMonth);
+
+                    return startsInMonth || endsInMonth || createdInMonth;
                 })
                 .map(c -> {
                     Entry e = new Entry();
 
-                    e.setTitle(c.getTitle());
-                    e.setStart(c.getCreatedDate().atZone(ZoneId.systemDefault()).toLocalDateTime());
+                    String buildingNames = c.getBuildings() != null && !c.getBuildings().isEmpty() ?
+                            c.getBuildings().stream().map(b -> b.getName()).collect(Collectors.joining(", ")) : "Ni določenih objektov";
+                    String titlePrefix = c.getStatus() != null ? appProcessProperties.getStatuses().get(c.getStatus()) : "Zadeva";
+
+                    e.setTitle("🗓️ " + titlePrefix + ": " + c.getTitle() + " (" + buildingNames + ")");
+                    e.setAllDay(true);
+
+                    if (c.getStartDate() != null) {
+                        e.setStart(c.getStartDate().atZone(ZoneId.systemDefault()).toInstant());
+                    } else {
+                        e.setStart(c.getCreatedDate() != null ? c.getCreatedDate().atZone(ZoneId.systemDefault()).toInstant() : LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
+                    }
+
+                    if (c.getEndDate() != null) {
+                        e.setEnd(c.getEndDate().atZone(ZoneId.systemDefault()).toInstant());
+                    } else {
+                        e.setEnd(e.getStart());
+                    }
+
+                    String color = switch (c.getStatus()) {
+                        case "PREDLOG", "V_PREGLEDU" -> "#9C27B0";
+                        case "POTRJENO", "V_DELU" -> "#FF9800";
+                        case "ZAKLJUCENO" -> "#4CAF50";
+                        default -> "#2196F3";
+                    };
+                    e.setColor(color);
+                    e.setTextColor("white");
+
+                    // POPRAVEK: Uporaba setCustomProperty
+                    e.setCustomProperty("status", c.getStatus());
+                    e.setCustomProperty("buildings", buildingNames);
+
                     return e;
                 })
-                .toList();
+                .collect(Collectors.toList());
 
+        entryProvider.removeAllEntries();
         entryProvider.addEntries(entries);
-        calendar.gotoDate(start);
+        calendar.gotoDate(startOfMonth);
     }
 }

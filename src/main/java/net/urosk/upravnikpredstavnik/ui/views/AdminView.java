@@ -1,3 +1,4 @@
+// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/views/AdminView.java
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.button.Button;
@@ -24,6 +25,8 @@ import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
+import java.util.ArrayList; // NOV UVOZ
+import java.util.Collection; // NOV UVOZ
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -136,8 +139,15 @@ public class AdminView extends VerticalLayout {
                 .set("padding", "1.5rem");
         userFormLayout.add(userRolesSelect, userManagedBuildingsSelect, saveUserButton);
 
-        userBinder.bind(userRolesSelect, User::getRoles, User::setRoles);
-        userBinder.bind(userManagedBuildingsSelect, User::getManagedBuildings, User::setManagedBuildings);
+        // SPREMENJENO: Vezava za Set<String> roles
+        userBinder.forField(userRolesSelect)
+                .bind(User::getRoles,
+                        (user, selectedRoles) -> user.setRoles(new HashSet<>(selectedRoles)));
+
+        // SPREMENJENO: Vezava za Set<Building> managedBuildings
+        userBinder.forField(userManagedBuildingsSelect)
+                .bind(User::getManagedBuildings,
+                        (user, selectedBuildings) -> user.setManagedBuildings(new HashSet<>(selectedBuildings)));
 
         saveUserButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         saveUserButton.addClickListener(event -> saveUser());
@@ -156,6 +166,10 @@ public class AdminView extends VerticalLayout {
             saveUserButton.setVisible(false);
         } else {
             userBinder.setBean(user);
+            // SPREMENJENO: Nastavitev vrednosti za MultiSelectComboBox (pretvorba Set v Collection)
+            userRolesSelect.setValue(new ArrayList<>(user.getRoles()));
+            userManagedBuildingsSelect.setValue(new ArrayList<>(user.getManagedBuildings()));
+
             userRolesSelect.setVisible(true);
             userManagedBuildingsSelect.setVisible(true);
             saveUserButton.setVisible(true);
@@ -204,8 +218,6 @@ public class AdminView extends VerticalLayout {
                 .set("box-shadow", "0 4px 16px rgba(0,0,0,0.2)")
                 .set("padding", "1.5rem");
 
-        // ODSTRANJENO: buildingBinder.bindInstanceFields(this);
-        // DODANO: Eksplicitno vezanje polj
         buildingBinder.forField(buildingNameField)
                 .asRequired("Ime objekta je obvezno.")
                 .bind(Building::getName, Building::setName);
@@ -259,7 +271,6 @@ public class AdminView extends VerticalLayout {
         Building building = buildingBinder.getBean();
         if (building != null) {
             try {
-                // Preverite, ali je ime objekta edinstveno pred shranjevanjem
                 if (building.getId() == null && buildingRepository.findByName(building.getName()).isPresent()) {
                     Notification.show("Objekt z imenom '" + building.getName() + "' že obstaja. Izberite drugo ime.", 5000, Notification.Position.MIDDLE)
                             .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -327,6 +338,11 @@ public class AdminView extends VerticalLayout {
         } catch (Exception e) {
             Notification.show("Napaka pri brisanju objekta: " + e.getMessage(), 3000, Notification.Position.MIDDLE)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            // Dodana bolj specifična obravnava napake, če pride do problema pri vezavi
+            if (!buildingBinder.isValid()) {
+                buildingBinder.validate(); // Ponovno validiraj, da prikažeš napake uporabniku
+                Notification.show("Prosimo, popravite napake v obrazcu za objekt.", 3000, Notification.Position.MIDDLE);
+            }
         }
     }
 

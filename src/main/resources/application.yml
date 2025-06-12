@@ -108,9 +108,9 @@ spring:
 # -------------------------------------------
 vaadin:
   launch-browser: true
-# To improve the performance during development.
+# To improve the performance during development. com.vaadin,org.vaadin,dev.hilla,com.flowingcode
   # For more information https://vaadin.com/docs/latest/flow/integrations/spring/configuration#special-configuration-parameters
-  allowed-packages: com.vaadin,org.vaadin,com.flowingcode,net.urosk.upravnikpredstavnik
+  allowed-packages: com.vaadin,org.vaadin,com.flowingcode,net.urosk.upravnikpredstavnik,dev.hilla,
 
 # -------------------------------------------
 # BELEŽENJE (LOGGING)

@@ -1,3 +1,4 @@
+// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/views/ResidentView.java
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.Component;
@@ -41,10 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Route(value = "", layout = MainLayout.class)
@@ -110,9 +108,13 @@ public class ResidentView extends VerticalLayout {
 
         binder.forField(titleField).asRequired("Naslov je obvezen.").bind(Case::getTitle, Case::setTitle);
         binder.forField(descriptionField).asRequired("Opis je obvezen.").bind(Case::getDescription, Case::setDescription);
+        // SPREMENJENO: Poveži MultiSelectComboBox s Set<Building>
         binder.forField(buildingSelect)
                 .asRequired("Izbira objekta je obvezna.")
-                .bind(Case::getBuildings, Case::setBuildings);
+                .bind(
+                        Case::getBuildings,
+                        (caseObject, selectedBuildings) -> caseObject.setBuildings(new HashSet<>(selectedBuildings)) // Pretvori Collection v HashSet
+                );
 
         MultiFileMemoryBuffer buffer = new MultiFileMemoryBuffer();
         Upload upload = new Upload(buffer);
@@ -205,27 +207,26 @@ public class ResidentView extends VerticalLayout {
         Div content = new Div();
         content.addClassNames(LumoUtility.Margin.Vertical.MEDIUM);
         content.setText(caseItem.getDescription());
-        card.add(content); // Dodaj opis takoj
+        card.add(content);
 
-        // NOV DODATEK: Prikaz objektov z ikono in lepim oblikovanjem
         if (caseItem.getBuildings() != null && !caseItem.getBuildings().isEmpty()) {
             HorizontalLayout buildingsLayout = new HorizontalLayout();
             buildingsLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-            buildingsLayout.setSpacing(true); // Poveča razmik med ikono in besedilom
-            buildingsLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL, LumoUtility.Padding.Horizontal.SMALL); // Dodani robovi za lepši videz
+            buildingsLayout.setSpacing(true);
+            buildingsLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL, LumoUtility.Padding.Horizontal.SMALL);
 
-            Icon buildingIcon = VaadinIcon.HOME_O.create(); // Ikona hiše/zgradbe
-            buildingIcon.setColor("var(--lumo-contrast-50pct)"); // Siva barva za ikono
-            buildingIcon.setSize("16px"); // Manjša velikost ikone
+            Icon buildingIcon = VaadinIcon.HOME_O.create();
+            buildingIcon.setColor("var(--lumo-contrast-50pct)");
+            buildingIcon.setSize("16px");
 
             String buildingNames = caseItem.getBuildings().stream()
                     .map(Building::getName)
                     .collect(Collectors.joining(", "));
             Span buildingsSpan = new Span(buildingNames);
-            buildingsSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY); // Manjša pisava in sekundarna barva
+            buildingsSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY);
 
             buildingsLayout.add(buildingIcon, buildingsSpan);
-            card.add(buildingsLayout); // Dodaj layout objektov v kartico
+            card.add(buildingsLayout);
         }
 
         VerticalLayout attachmentsLayout = createAttachmentsLayout(caseItem);
@@ -252,7 +253,7 @@ public class ResidentView extends VerticalLayout {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         footer.setWidthFull();
 
-        card.add(header, attachmentsLayout, footer); // Odstranil sem 'content' tukaj, ker je bil že dodan prej
+        card.add(header, attachmentsLayout, footer);
         return card;
     }
 
