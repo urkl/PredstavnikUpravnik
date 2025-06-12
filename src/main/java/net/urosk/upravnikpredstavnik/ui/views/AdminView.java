@@ -72,12 +72,16 @@ public class AdminView extends VerticalLayout {
         setPadding(true);
 
         H2 title = new H2("Administracija sistema");
+        title.addClassName("title");
 
         configureUserManagement();
         configureBuildingManagement();
         configureTabs();
 
-        add(title, mainTabs, userManagementLayout, buildingManagementLayout);
+
+        VerticalLayout layout = new VerticalLayout(userManagementLayout, buildingManagementLayout);
+        layout.addClassName("layout");
+        add(title, layout);
 
         setContentForSelectedTab(mainTabs.getSelectedTab());
     }
@@ -89,6 +93,8 @@ public class AdminView extends VerticalLayout {
         mainTabs.add(userTab, buildingTab);
         mainTabs.setSelectedTab(userTab);
         mainTabs.addSelectedChangeListener(event -> setContentForSelectedTab(event.getSelectedTab()));
+
+        mainTabs.addClassName("layout");
     }
 
     private void setContentForSelectedTab(Tab selectedTab) {
@@ -109,6 +115,7 @@ public class AdminView extends VerticalLayout {
         userManagementLayout.setSpacing(true);
 
         H2 userSectionTitle = new H2("Upravljanje vlog uporabnikov");
+
         userManagementLayout.add(userSectionTitle);
 
 
@@ -132,11 +139,7 @@ public class AdminView extends VerticalLayout {
 
         FormLayout userFormLayout = new FormLayout();
         userFormLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("300px", 1));
-        userFormLayout.getStyle()
-                .set("background-color", "rgba(255, 255, 255, 0.95)")
-                .set("border-radius", "12px")
-                .set("box-shadow", "0 4px 16px rgba(0,0,0,0.2)")
-                .set("padding", "1.5rem");
+        userFormLayout.addClassName("layout");
         userFormLayout.add(userRolesSelect, userManagedBuildingsSelect, saveUserButton);
 
         // SPREMENJENO: Vezava za Set<String> roles

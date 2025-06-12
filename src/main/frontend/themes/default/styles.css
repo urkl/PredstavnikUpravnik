@@ -11,6 +11,25 @@ html {
     font-family: 'Lato', sans-serif;
     height: 100%;
 }
+.title { /* Predpostavljam, da se ta razred uporablja za naslove */
+    display: inline-block; /* Omogoča uporabo paddinga in marginov, ohranja flow teksta */
+    background-color: rgba(0, 0, 0, 0.5); /* Poltransparentno črno ozadje */
+    color: white; /* Bel tekst na črnem ozadju */
+    padding: var(--lumo-space-s) var(--lumo-space-m); /* Majhen padding */
+    border-radius: var(--lumo-border-radius-m); /* Zaobljeni robovi */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Majhna senca za izstopanje badge-a */
+    text-shadow: none; /* Odstranimo senco teksta na belem, ker je že na badge-u */
+    margin: var(--lumo-space-s) 0;
+    text-space: var(--lumo-space-xl);
+    /*width: 100%;*/
+}
+
+.layout {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    padding: 1.5rem;
+}
 
 /*!* Eksplicitno nastavite pisavo za naslove (H1, H2, H3...) *!*/
 /*h1, h2, h3, h4, h5, h6 {*/

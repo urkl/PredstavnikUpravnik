@@ -84,6 +84,7 @@ public class CalendarView extends VerticalLayout {
 
     private HorizontalLayout createTopBar() {
         HorizontalLayout topBar = new HorizontalLayout(monthSelect, yearSelect);
+        topBar.addClassName("layout");
         topBar.setAlignItems(FlexComponent.Alignment.BASELINE);
         topBar.setSpacing(true);
         topBar.setPadding(false);

@@ -65,8 +65,10 @@ public class ManagerKanbanView extends HorizontalLayout {
 
     private VerticalLayout createStatusColumn(String statusKey, String displayName) {
         H3 title = new H3(displayName);
+          title.addClassNames("title");
         VerticalLayout column = new VerticalLayout(title);
         column.addClassName("kanban-column");
+
 
         DropTarget<VerticalLayout> dropTarget = DropTarget.create(column);
         dropTarget.setActive(true);
@@ -122,6 +124,7 @@ public class ManagerKanbanView extends HorizontalLayout {
 
         // --- GLAVA KARTICE ---
         Span title = new Span(caseItem.getTitle());
+
         title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
 
         Button editButton = new Button(new Icon(VaadinIcon.EXTERNAL_LINK));

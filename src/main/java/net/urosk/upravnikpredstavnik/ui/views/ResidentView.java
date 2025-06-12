@@ -77,7 +77,9 @@ public class ResidentView extends VerticalLayout {
         casesLayout.setSpacing(true);
         casesLayout.addClassName("cases-container");
 
-        contentWrapper.add(createCaseCreationForm(), new H2("Moje zadnje zadeve"), casesLayout);
+        var h2=new H2("Moje zadnje zadeve");
+        h2.addClassName("title");
+        contentWrapper.add(createCaseCreationForm(), h2, casesLayout);
         add(contentWrapper);
 
         refreshCasesList();
