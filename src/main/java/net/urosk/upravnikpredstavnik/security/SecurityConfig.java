@@ -3,6 +3,7 @@ package net.urosk.upravnikpredstavnik.security;
 import com.vaadin.flow.spring.security.VaadinSavedRequestAwareAuthenticationSuccessHandler;
 import com.vaadin.flow.spring.security.VaadinWebSecurity;
 import net.urosk.upravnikpredstavnik.ui.views.LoginView;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -24,17 +25,29 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        // Najprej dovolimo dostop do javnih virov
-        http.authorizeHttpRequests(auth -> auth.requestMatchers("/images/**", "/themes/**").permitAll());
-        http.authorizeHttpRequests(
-                authorize -> authorize.requestMatchers(new AntPathRequestMatcher("/images/*.png")).permitAll());
+        http.authorizeHttpRequests(auth -> auth
+                        // Dovolimo dostop do pogostih statičnih virov Spring Boota
+                        // To pokrije npr. /css/**, /js/**, /images/**, /webjars/**, /**/favicon.ico
+                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
 
-        // Icons from the line-awesome addon
-        http.authorizeHttpRequests(authorize -> authorize
-                .requestMatchers(new AntPathRequestMatcher("/line-awesome/**/*.svg")).permitAll());
+                        // Dovolimo dostop do vaših specifičnih javnih poti, ki jih morda PathRequest ne pokriva.
+                        // Uporabite direktne string vzorce za Ant-style matching.
+                        // Če so vaše slike in teme že v standardnih statičnih mapah (pokritih zgoraj), lahko te vrstice odstranite.
+                        .requestMatchers("/images/**").permitAll() // Splošne slike
+                        .requestMatchers("/themes/**").permitAll() // Teme
+                        .requestMatchers("/images/*.png").permitAll() // Specifične PNG slike (verjetno redundantno)
 
+                        // Ikone iz line-awesome addona
+                        .requestMatchers("/line-awesome/**/*.svg").permitAll()
+
+                // Tukaj dodajte vse druge poti, ki morajo biti javno dostopne
+                // .requestMatchers("/moja-javna-pot/**").permitAll()
+        );
+        http.csrf(csrf -> csrf
+                .ignoringRequestMatchers("/VAADIN/dynamic/resource/**") // Sprememba: direktni string vzorec
+        );
         super.configure(http);
-        // ----------------------------------------------------------------
+
 
         // Sedaj definiramo naše lastne nastavitve, ki bodo imele prednost
         setLoginView(http, LoginView.class, "/logout");
