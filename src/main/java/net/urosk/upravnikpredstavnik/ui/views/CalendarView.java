@@ -17,6 +17,10 @@ import org.vaadin.stefan.fullcalendar.Entry;
 import org.vaadin.stefan.fullcalendar.FullCalendar;
 import org.vaadin.stefan.fullcalendar.FullCalendarBuilder;
 import org.vaadin.stefan.fullcalendar.dataprovider.InMemoryEntryProvider;
+import com.vaadin.flow.component.button.Button; // NOV UVOZ
+import com.vaadin.flow.component.button.ButtonVariant; // NOV UVOZ
+import com.vaadin.flow.component.icon.Icon; // NOV UVOZ
+import com.vaadin.flow.component.icon.VaadinIcon; // NOV UVOZ
 
 
 import java.time.LocalDate;
@@ -40,6 +44,11 @@ public class CalendarView extends VerticalLayout {
     ;
     private final ComboBox<Integer> yearSelect = new ComboBox<>("Leto");
     private final ComboBox<String> monthSelect = new ComboBox<>("Mesec");
+
+    // NOV DODATEK: Gumba za navigacijo po mesecih
+    private final Button prevMonthButton = new Button(new Icon(VaadinIcon.ANGLE_LEFT));
+    private final Button nextMonthButton = new Button(new Icon(VaadinIcon.ANGLE_RIGHT));
+
 
     private static final Map<String, Integer> SLO_MONTHS = new HashMap<>();
     static {
@@ -80,14 +89,23 @@ public class CalendarView extends VerticalLayout {
 
         yearSelect.addValueChangeListener(e -> loadCasesForSelectedMonth());
         monthSelect.addValueChangeListener(e -> loadCasesForSelectedMonth());
+
+        // NOV DODATEK: Konfiguracija gumbov za navigacijo
+        prevMonthButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        nextMonthButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+        prevMonthButton.addClickListener(e -> navigateMonth(-1)); // Prejšnji mesec
+        nextMonthButton.addClickListener(e -> navigateMonth(1)); // Naslednji mesec
     }
 
     private HorizontalLayout createTopBar() {
-        HorizontalLayout topBar = new HorizontalLayout(monthSelect, yearSelect);
+        HorizontalLayout topBar = new HorizontalLayout(prevMonthButton, monthSelect, yearSelect, nextMonthButton); // DODANO: Gumba
         topBar.addClassName("layout");
         topBar.setAlignItems(FlexComponent.Alignment.BASELINE);
         topBar.setSpacing(true);
         topBar.setPadding(false);
+        topBar.setWidthFull(); // Naj se razširi, da gumba prideta na robove
+        topBar.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER); // Centrirajte vsebino, gumba pa se bosta pomaknila na robove zaradi setWidthFull
         return topBar;
     }
 
@@ -102,9 +120,8 @@ public class CalendarView extends VerticalLayout {
         calendar.getStyle().set("margin-top", "1rem");
         calendar.addEntryClickedListener(evt -> {
             Entry entry = evt.getEntry();
-            // POPRAVEK: Pridobivanje custom propertyjev
-            String statusKey = (String) entry.getCustomProperty("status"); // Pravilna uporaba getCustomProperty
-            String buildingsValue = (String) entry.getCustomProperty("buildings"); // Pravilna uporaba getCustomProperty
+            String statusKey = (String) entry.getCustomProperty("status");
+            String buildingsValue = (String) entry.getCustomProperty("buildings");
 
             String statusDisplayName = (statusKey != null && appProcessProperties.getStatuses().containsKey(statusKey))
                     ? appProcessProperties.getStatuses().get(statusKey)
@@ -112,7 +129,7 @@ public class CalendarView extends VerticalLayout {
 
             String details = "Zadeva: " + entry.getTitle() + "\n";
             details += "Status: " + statusDisplayName + "\n";
-            details += "Objekt(i): " + (buildingsValue != null ? buildingsValue : "Ni določenih objektov") + "\n"; // Varno preverjanje
+            details += "Objekt(i): " + (buildingsValue != null ? buildingsValue : "Ni določenih objektov") + "\n";
             details += "Od: " + (entry.getStart() != null ? entry.getStart().format(java.time.format.DateTimeFormatter.ofPattern("d.M.yyyy", new Locale("sl", "SI"))) : "N/A") + "\n";
             details += "Do: " + (entry.getEnd() != null ? entry.getEnd().format(java.time.format.DateTimeFormatter.ofPattern("d.M.yyyy", new Locale("sl", "SI"))) : "N/A");
 
@@ -171,7 +188,6 @@ public class CalendarView extends VerticalLayout {
                     e.setColor(color);
                     e.setTextColor("white");
 
-                    // POPRAVEK: Uporaba setCustomProperty
                     e.setCustomProperty("status", c.getStatus());
                     e.setCustomProperty("buildings", buildingNames);
 
@@ -182,5 +198,22 @@ public class CalendarView extends VerticalLayout {
         entryProvider.removeAllEntries();
         entryProvider.addEntries(entries);
         calendar.gotoDate(startOfMonth);
+    }
+
+    // NOV DODATEK: Metoda za navigacijo po mesecih
+    private void navigateMonth(int monthOffset) {
+        YearMonth currentSelectedMonth = YearMonth.of(yearSelect.getValue(), SLO_MONTHS.get(monthSelect.getValue().toLowerCase()));
+        YearMonth newMonth = currentSelectedMonth.plusMonths(monthOffset);
+
+        // Preveri, ali se je spremenilo leto in posodobi yearSelect
+        if (newMonth.getYear() != yearSelect.getValue()) {
+            yearSelect.setValue(newMonth.getYear());
+        }
+
+        // Posodobi monthSelect
+        monthSelect.setValue(newMonth.getMonth().getDisplayName(TextStyle.FULL, new Locale("sl", "SI")));
+
+        // Ponovno naloži dogodke za novi mesec
+        loadCasesForSelectedMonth();
     }
 }
