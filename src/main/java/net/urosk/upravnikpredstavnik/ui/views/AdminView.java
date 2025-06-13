@@ -107,7 +107,7 @@ public class AdminView extends VerticalLayout {
         Tab userTab = new Tab("Upravljanje uporabnikov");
         Tab buildingTab = new Tab("Upravljanje objektov");
         Tab activeUsersTab = new Tab("Aktivni uporabniki"); // <-- NOV ZAVIHEK
-
+        mainTabs.addClassName("layout");
         mainTabs.add(userTab, buildingTab, activeUsersTab);
         mainTabs.setSelectedTab(userTab);
         mainTabs.addSelectedChangeListener(event -> setContentForSelectedTab(event.getSelectedTab()));
