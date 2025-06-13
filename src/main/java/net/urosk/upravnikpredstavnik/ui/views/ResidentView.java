@@ -175,11 +175,8 @@ public class ResidentView extends VerticalLayout {
         casesLayout.removeAll();
         maybeUser.ifPresent(user -> {
             List<Case> cases;
-            if (user.getRoles().contains("ROLE_UPRAVNIK") || user.getRoles().contains("ROLE_PREDSTAVNIK") || user.getRoles().contains("ROLE_ADMINISTRATOR")) {
-                cases = caseRepository.findAll();
-            } else {
+
                 cases = caseRepository.findFirst10ByAuthorIdOrderByCreatedDateDesc(user.getId());
-            }
 
             if (cases.isEmpty()) {
                 casesLayout.add(new Span("Nimate še nobene odprte zadeve."));
