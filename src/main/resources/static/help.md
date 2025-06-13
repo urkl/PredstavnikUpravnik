@@ -1,3 +1,7 @@
+### Avtor: [Uroš Kristan - Urosk.net](https://www.urosk.net/)
+
+---
+
 # Pomoč za BlokApp 🏢
 
 Dobrodošli v platformi **BlokApp**! Ta aplikacija je zasnovana za izboljšanje in poenostavitev **komunikacije ter dokumentacije** med stanovalci, predstavniki stanovalcev in upravnikom. Naš glavni namen je zagotoviti preglednost, učinkovitost in enostaven dostop do vseh informacij, povezanih z upravljanjem vaše stavbe.
