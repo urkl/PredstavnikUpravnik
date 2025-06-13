@@ -115,6 +115,8 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
         HorizontalLayout buttons = new HorizontalLayout(saveButton, backButton);
         buttons.getStyle().set("margin-top", "1rem");
 
+
+
         add(header, formLayout, new H2("Podnaloge"), subtaskComponent, new H2("Datoteke"), upload, filesGrid, buttons);
 
         binder.bindInstanceFields(this);

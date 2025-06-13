@@ -3,6 +3,7 @@ package net.urosk.upravnikpredstavnik.security;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.server.ServiceInitEvent;
 import com.vaadin.flow.server.VaadinServiceInitListener;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
 import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.ui.views.AccessDeniedView;
@@ -46,6 +47,12 @@ public class RouteAccessControl implements VaadinServiceInitListener {
         if (LoginView.class.equals(targetView) || AccessDeniedView.class.equals(targetView)) {
             return;
         }
+
+        if (targetView.isAnnotationPresent(AnonymousAllowed.class)) {
+            // Dostop je dovoljen vsem, ne naredimo ničesar.
+            return;
+        }
+
 
         // Če uporabnik ni prijavljen, ga preusmerimo na prijavno stran.
         if (authenticatedUser.get().isEmpty()) {

@@ -36,6 +36,7 @@ import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
+import net.urosk.upravnikpredstavnik.ui.components.CommentsDialog;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -252,7 +253,20 @@ public class ResidentView extends VerticalLayout {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         footer.setWidthFull();
 
-        card.add(header, attachmentsLayout, footer);
+
+        Button commentsButton = new Button(new Icon(VaadinIcon.COMMENTS_O));
+        commentsButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        int commentCount = caseItem.getComments() != null ? caseItem.getComments().size() : 0;
+        commentsButton.setText(String.valueOf(commentCount));
+        commentsButton.setTooltipText("Prikaži komentarje (" + commentCount + ")");
+        commentsButton.addClickListener(e -> {
+            CommentsDialog dialog = new CommentsDialog(caseItem, caseRepository, authenticatedUser ,()->{});
+
+            dialog.open();
+        });
+
+
+        card.add(header, attachmentsLayout, commentsButton,footer);
         return card;
     }
 

@@ -1,3 +1,4 @@
+// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/views/ManagerKanbanView.java
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.Component;
@@ -26,15 +27,22 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
+import net.urosk.upravnikpredstavnik.data.entity.Building;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.Subtask;
-import net.urosk.upravnikpredstavnik.data.entity.Building;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
+import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
+import net.urosk.upravnikpredstavnik.ui.components.CommentsDialog;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Route(value = "kanban", layout = MainLayout.class)
@@ -45,10 +53,12 @@ public class ManagerKanbanView extends HorizontalLayout {
     private final CaseRepository caseRepository;
     private final Map<String, VerticalLayout> statusColumns = new HashMap<>();
     private final AppProcessProperties processProperties;
+    private final AuthenticatedUser authenticatedUser;
 
-    public ManagerKanbanView(CaseRepository caseRepository, AppProcessProperties processProperties) {
+    public ManagerKanbanView(CaseRepository caseRepository, AppProcessProperties processProperties, AuthenticatedUser authenticatedUser) {
         this.caseRepository = caseRepository;
         this.processProperties = processProperties;
+        this.authenticatedUser = authenticatedUser;
         setSizeFull();
         setSpacing(true);
         addClassName("kanban-board");
@@ -65,10 +75,9 @@ public class ManagerKanbanView extends HorizontalLayout {
 
     private VerticalLayout createStatusColumn(String statusKey, String displayName) {
         H3 title = new H3(displayName);
-          title.addClassNames("title");
+        title.addClassNames("title");
         VerticalLayout column = new VerticalLayout(title);
         column.addClassName("kanban-column");
-
 
         DropTarget<VerticalLayout> dropTarget = DropTarget.create(column);
         dropTarget.setActive(true);
@@ -113,10 +122,6 @@ public class ManagerKanbanView extends HorizontalLayout {
         });
     }
 
-
-    /**
-     * Ustvari interaktivno kartico za posamezno zadevo.
-     */
     private Card createCaseCard(Case caseItem) {
         Card card = new Card();
         card.setWidth("300px");
@@ -124,7 +129,6 @@ public class ManagerKanbanView extends HorizontalLayout {
 
         // --- GLAVA KARTICE ---
         Span title = new Span(caseItem.getTitle());
-
         title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
 
         Button editButton = new Button(new Icon(VaadinIcon.EXTERNAL_LINK));
@@ -135,7 +139,7 @@ public class ManagerKanbanView extends HorizontalLayout {
 
         HorizontalLayout cardHeader = new HorizontalLayout(title, editButton);
         cardHeader.setWidthFull();
-        cardHeader.setAlignItems(FlexComponent.Alignment.CENTER); // Changed to FlexComponent.Alignment.CENTER
+        cardHeader.setAlignItems(FlexComponent.Alignment.CENTER);
         card.add(cardHeader);
 
         // --- VSEBINA KARTICE ---
@@ -143,38 +147,29 @@ public class ManagerKanbanView extends HorizontalLayout {
         description.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.Top.SMALL);
         card.add(description);
 
-        // Prikaz objektov z ikono
         if (caseItem.getBuildings() != null && !caseItem.getBuildings().isEmpty()) {
             HorizontalLayout buildingsLayout = new HorizontalLayout();
-            buildingsLayout.setAlignItems(FlexComponent.Alignment.CENTER); // Changed to FlexComponent.Alignment.CENTER
+            buildingsLayout.setAlignItems(FlexComponent.Alignment.CENTER);
             buildingsLayout.setSpacing(true);
             buildingsLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL);
-
             Icon buildingIcon = VaadinIcon.HOME_O.create();
             buildingIcon.setColor("var(--lumo-contrast-50pct)");
             buildingIcon.setSize("16px");
-
-            String buildingNames = caseItem.getBuildings().stream()
-                    .map(Building::getName)
-                    .collect(Collectors.joining(", "));
+            String buildingNames = caseItem.getBuildings().stream().map(Building::getName).collect(Collectors.joining(", "));
             Span buildingsSpan = new Span(buildingNames);
             buildingsSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY);
-
             buildingsLayout.add(buildingIcon, buildingsSpan);
             card.add(buildingsLayout);
         }
 
-        // NOV DODATEK: Prikaz datumov začetka in konca del
         if (caseItem.getStartDate() != null || caseItem.getEndDate() != null) {
             HorizontalLayout datesLayout = new HorizontalLayout();
             datesLayout.setAlignItems(FlexComponent.Alignment.CENTER);
             datesLayout.setSpacing(true);
             datesLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL);
-
             Icon calendarIcon = VaadinIcon.CALENDAR_O.create();
             calendarIcon.setColor("var(--lumo-contrast-50pct)");
             calendarIcon.setSize("16px");
-
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d.M.yyyy", new Locale("sl", "SI"));
             String dateText = "";
             if (caseItem.getStartDate() != null && caseItem.getEndDate() != null) {
@@ -184,10 +179,8 @@ public class ManagerKanbanView extends HorizontalLayout {
             } else if (caseItem.getEndDate() != null) {
                 dateText = "Konec: " + caseItem.getEndDate().format(formatter);
             }
-
             Span datesSpan = new Span(dateText);
             datesSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY);
-
             datesLayout.add(calendarIcon, datesSpan);
             card.add(datesLayout);
         }
@@ -197,35 +190,46 @@ public class ManagerKanbanView extends HorizontalLayout {
         subtasksContainer.setPadding(false);
         subtasksContainer.setSpacing(false);
         subtasksContainer.addClassName(LumoUtility.Margin.Top.MEDIUM);
-
         ProgressBar progressBar = createSubtaskProgressBar(caseItem);
         subtasksContainer.add(progressBar);
-
         VerticalLayout checkboxLayout = new VerticalLayout();
         checkboxLayout.setPadding(false);
         checkboxLayout.setSpacing(false);
-
         if (caseItem.getSubtasks() != null) {
-            caseItem.getSubtasks().forEach(subtask ->
-                    checkboxLayout.add(createSubtaskCheckbox(subtask, caseItem, progressBar))
-            );
+            caseItem.getSubtasks().forEach(subtask -> checkboxLayout.add(createSubtaskCheckbox(subtask, caseItem, progressBar)));
         }
         subtasksContainer.add(checkboxLayout);
-
         HorizontalLayout addSubtaskControls = createAddSubtaskControls(caseItem, checkboxLayout, progressBar);
         subtasksContainer.add(addSubtaskControls);
         card.add(subtasksContainer);
 
-        // --- NOGA KARTICE ---
+        // --- NOGA KARTICE (POSODOBLJENA LOGIKA) ---
         Span author = new Span("Prijavil: " + caseItem.getAuthor().getName());
         author.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.TERTIARY);
+
+        Button commentsButton = new Button(new Icon(VaadinIcon.COMMENTS_O));
+        commentsButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        int commentCount = caseItem.getComments() != null ? caseItem.getComments().size() : 0;
+        commentsButton.setText(String.valueOf(commentCount));
+        commentsButton.setTooltipText("Prikaži komentarje (" + commentCount + ")");
+        commentsButton.addClickListener(e -> {
+            CommentsDialog dialog = new CommentsDialog(caseItem, caseRepository, authenticatedUser,this::loadAndDisplayCases);
+
+            dialog.open();
+        });
 
         Span timeInfo = new Span(formatTimeAgo(caseItem.getCreatedDate()));
         timeInfo.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.TERTIARY);
 
-        HorizontalLayout cardFooter = new HorizontalLayout(author, timeInfo);
+        // Avtor na levi, ostalo na desni
+        HorizontalLayout cardFooter = new HorizontalLayout(author, commentsButton, timeInfo);
+        cardFooter.setAlignItems(FlexComponent.Alignment.CENTER);
         cardFooter.setWidthFull();
-        cardFooter.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        // Pomaknemo gumb in čas na desno stran s praznim Div elementom, ki se razširi
+        Div spacer = new Div();
+        cardFooter.expand(spacer); // Div bo zavzel ves preostali prostor
+        cardFooter.addComponentAtIndex(1, spacer); // Dodamo ga med avtorja in gumb
+
         cardFooter.addClassName(LumoUtility.Margin.Top.MEDIUM);
         card.add(cardFooter);
 
@@ -257,9 +261,6 @@ public class ManagerKanbanView extends HorizontalLayout {
         return checkbox;
     }
 
-    /**
-     * Ustvari UI elemente za dodajanje nove podnaloge.
-     */
     private HorizontalLayout createAddSubtaskControls(Case caseItem, VerticalLayout checkboxLayout, ProgressBar progressBar) {
         Button toggleAddSubtaskBtn = new Button("Dodaj podnalogo", new Icon(VaadinIcon.PLUS_CIRCLE));
         toggleAddSubtaskBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
@@ -294,10 +295,9 @@ public class ManagerKanbanView extends HorizontalLayout {
                 caseItem.getSubtasks().add(newSubtask);
                 caseRepository.save(caseItem);
 
-                // --- POPRAVEK: CILJANO DODAJANJE NAMESTO OSVEŽEVANJA CELOTNE PLOŠČE ---
                 Checkbox newCheckbox = createSubtaskCheckbox(newSubtask, caseItem, progressBar);
-                checkboxLayout.add(newCheckbox); // Dodamo nov checkbox v njegov layout
-                updateProgressBar(progressBar, caseItem); // Posodobimo progress bar
+                checkboxLayout.add(newCheckbox);
+                updateProgressBar(progressBar, caseItem);
 
                 newSubtaskField.clear();
                 addSubtaskRow.setVisible(false);
@@ -351,7 +351,7 @@ public class ManagerKanbanView extends HorizontalLayout {
         if (duration.toHours() < 24) return "pred " + duration.toHours() + " urami";
         if (duration.toDays() < 7) return "pred " + duration.toDays() + " dnevi";
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d. MMMM yyyy", new Locale("sl", "SI")); // Changed format to yyyy and added "sl" locale
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d. MMMM yyyy", new Locale("sl", "SI"));
         return "dne " + createdDate.format(formatter);
     }
 }

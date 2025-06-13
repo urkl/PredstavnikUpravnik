@@ -57,6 +57,9 @@ app:
       - view: net.urosk.upravnikpredstavnik.ui.views.HelpView # NOV DODATEK ZA HELP VIEW
         icon: QUESTION_CIRCLE_O # Ikona za vprašaj
         tooltip: "Pomoč"
+      - view: net.urosk.upravnikpredstavnik.ui.views.PublicCasesView # NOV DODATEK ZA HELP VIEW
+        icon: USER # Ikona za vprašaj
+        tooltip: "Pomoč"
 
   process:
     statuses:

@@ -25,11 +25,9 @@ import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
-import java.util.ArrayList; // NOV UVOZ
-import java.util.Collection; // NOV UVOZ
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Route(value = "admin", layout = MainLayout.class)
@@ -42,13 +40,14 @@ public class AdminView extends VerticalLayout {
     private final CaseRepository caseRepository;
     private final AppSecurityProperties appSecurityProperties;
 
+    // Komponente za upravljanje uporabnikov
     private final Grid<User> userGrid = new Grid<>(User.class);
     private final MultiSelectComboBox<String> userRolesSelect = new MultiSelectComboBox<>("Vloge uporabnika");
     private final MultiSelectComboBox<Building> userManagedBuildingsSelect = new MultiSelectComboBox<>("Upravljani objekti");
     private final Button saveUserButton = new Button("Shrani vloge in objekte");
-
     private final Binder<User> userBinder = new Binder<>(User.class);
 
+    // Komponente za upravljanje objektov
     private final Grid<Building> buildingGrid = new Grid<>(Building.class);
     private final TextField buildingNameField = new TextField("Ime objekta");
     private final TextField buildingAddressField = new TextField("Naslov objekta");
@@ -57,6 +56,7 @@ public class AdminView extends VerticalLayout {
     private final Button newBuildingButton = new Button("Nov objekt");
     private final Binder<Building> buildingBinder = new Binder<>(Building.class);
 
+    // Zavihki in postavitve
     private final Tabs mainTabs = new Tabs();
     private final VerticalLayout userManagementLayout = new VerticalLayout();
     private final VerticalLayout buildingManagementLayout = new VerticalLayout();
@@ -74,33 +74,41 @@ public class AdminView extends VerticalLayout {
         H2 title = new H2("Administracija sistema");
         title.addClassName("title");
 
+        // Konfiguracija vsebine
+        configureTabs();
         configureUserManagement();
         configureBuildingManagement();
-        configureTabs();
 
+        // Vsebinski kontejner, ki drži postavitve, ki se preklapljajo
+        VerticalLayout contentContainer = new VerticalLayout(userManagementLayout, buildingManagementLayout);
+        contentContainer.setPadding(false);
+        contentContainer.setSpacing(false);
+        contentContainer.setSizeFull();
+        contentContainer.addClassName("layout");
 
-        VerticalLayout layout = new VerticalLayout(userManagementLayout, buildingManagementLayout);
-        layout.addClassName("layout");
-        add(title, layout);
+        // Dodajanje komponent v glavni pogled
+        add(title, mainTabs, contentContainer);
 
+        // Nastavitev začetne vsebine glede na izbran zavihek
         setContentForSelectedTab(mainTabs.getSelectedTab());
     }
 
     private void configureTabs() {
         Tab userTab = new Tab("Upravljanje uporabnikov");
         Tab buildingTab = new Tab("Upravljanje objektov");
-
+        mainTabs.addClassName("layout");
         mainTabs.add(userTab, buildingTab);
         mainTabs.setSelectedTab(userTab);
         mainTabs.addSelectedChangeListener(event -> setContentForSelectedTab(event.getSelectedTab()));
-
-        mainTabs.addClassName("layout");
+        mainTabs.setWidthFull();
     }
 
     private void setContentForSelectedTab(Tab selectedTab) {
+        // Skrij obe postavitvi
         userManagementLayout.setVisible(false);
         buildingManagementLayout.setVisible(false);
 
+        // Prikaži samo izbrano
         if (selectedTab.getLabel().equals("Upravljanje uporabnikov")) {
             userManagementLayout.setVisible(true);
             refreshUserGrid();
@@ -114,99 +122,74 @@ public class AdminView extends VerticalLayout {
         userManagementLayout.setPadding(false);
         userManagementLayout.setSpacing(true);
 
-        H2 userSectionTitle = new H2("Upravljanje vlog uporabnikov");
-
+        H2 userSectionTitle = new H2("Urejanje vlog in objektov uporabnikov");
         userManagementLayout.add(userSectionTitle);
-
 
         userGrid.setColumns("name", "email");
         userGrid.addColumn(user -> String.join(", ", user.getRoles()))
                 .setHeader("Vloge").setSortable(true);
         userGrid.addColumn(user -> user.getManagedBuildings().stream().map(Building::getName).collect(Collectors.joining(", ")))
                 .setHeader("Upravljani objekti").setSortable(true);
-
         userGrid.getColumns().forEach(col -> col.setAutoWidth(true));
         userGrid.asSingleSelect().addValueChangeListener(event -> editUser(event.getValue()));
 
         userRolesSelect.setItems(appSecurityProperties.getRoles());
         userRolesSelect.setPlaceholder("Izberi vloge");
-        userRolesSelect.setAutoExpand(MultiSelectComboBox.AutoExpandMode.BOTH);
 
         userManagedBuildingsSelect.setItems(buildingRepository.findAll());
         userManagedBuildingsSelect.setItemLabelGenerator(Building::getName);
         userManagedBuildingsSelect.setPlaceholder("Izberi upravljane objekte");
-        userManagedBuildingsSelect.setAutoExpand(MultiSelectComboBox.AutoExpandMode.BOTH);
 
-        FormLayout userFormLayout = new FormLayout();
+        FormLayout userFormLayout = new FormLayout(userRolesSelect, userManagedBuildingsSelect, saveUserButton);
         userFormLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("300px", 1));
-        userFormLayout.addClassName("layout");
-        userFormLayout.add(userRolesSelect, userManagedBuildingsSelect, saveUserButton);
 
-        // SPREMENJENO: Vezava za Set<String> roles
-        userBinder.forField(userRolesSelect)
-                .bind(User::getRoles,
-                        (user, selectedRoles) -> user.setRoles(new HashSet<>(selectedRoles)));
-
-        // SPREMENJENO: Vezava za Set<Building> managedBuildings
-        userBinder.forField(userManagedBuildingsSelect)
-                .bind(User::getManagedBuildings,
-                        (user, selectedBuildings) -> user.setManagedBuildings(new HashSet<>(selectedBuildings)));
+        userBinder.forField(userRolesSelect).bind(User::getRoles, (user, roles) -> user.setRoles(new HashSet<>(roles)));
+        userBinder.forField(userManagedBuildingsSelect).bind(User::getManagedBuildings, (user, buildings) -> user.setManagedBuildings(new HashSet<>(buildings)));
 
         saveUserButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         saveUserButton.addClickListener(event -> saveUser());
 
         userManagementLayout.add(userGrid, userFormLayout);
 
-        userRolesSelect.setVisible(false);
-        userManagedBuildingsSelect.setVisible(false);
-        saveUserButton.setVisible(false);
+        // Formo na začetku skrijemo
+        editUser(null);
     }
 
     private void editUser(User user) {
-        if (user == null) {
-            userRolesSelect.setVisible(false);
-            userManagedBuildingsSelect.setVisible(false);
-            saveUserButton.setVisible(false);
-        } else {
-            userBinder.setBean(user);
-            // SPREMENJENO: Nastavitev vrednosti za MultiSelectComboBox (pretvorba Set v Collection)
+        userBinder.setBean(user);
+        boolean isUserSelected = user != null;
+
+        userRolesSelect.setVisible(isUserSelected);
+        userManagedBuildingsSelect.setVisible(isUserSelected);
+        saveUserButton.setVisible(isUserSelected);
+
+        if (isUserSelected) {
             userRolesSelect.setValue(new ArrayList<>(user.getRoles()));
             userManagedBuildingsSelect.setValue(new ArrayList<>(user.getManagedBuildings()));
-
-            userRolesSelect.setVisible(true);
-            userManagedBuildingsSelect.setVisible(true);
-            saveUserButton.setVisible(true);
         }
     }
 
     private void saveUser() {
         User user = userBinder.getBean();
-        if (user != null) {
-            try {
-                userRepository.save(user);
-                Notification.show("Vloge in objekti za uporabnika " + user.getName() + " so shranjeni.", 2000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                refreshUserGrid();
-                userGrid.asSingleSelect().clear();
-            } catch (Exception e) {
-                Notification.show("Napaka pri shranjevanju uporabnika: " + e.getMessage(), 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
+        if (user != null && userBinder.writeBeanIfValid(user)) {
+            userRepository.save(user);
+            Notification.show("Podatki za uporabnika " + user.getName() + " so shranjeni.", 3000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            refreshUserGrid();
+            editUser(null);
+        } else {
+            Notification.show("Napaka pri shranjevanju.", 3000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
     private void refreshUserGrid() {
         userGrid.setItems(userRepository.findAll());
-        userRolesSelect.clear();
-        userManagedBuildingsSelect.clear();
     }
 
     private void configureBuildingManagement() {
         buildingManagementLayout.setPadding(false);
         buildingManagementLayout.setSpacing(true);
-        buildingManagementLayout.setVisible(false);
 
-        H2 buildingSectionTitle = new H2("Upravljanje objektov");
+        H2 buildingSectionTitle = new H2("Urejanje objektov");
         buildingManagementLayout.add(buildingSectionTitle);
 
         buildingGrid.setColumns("name", "address");
@@ -215,143 +198,85 @@ public class AdminView extends VerticalLayout {
 
         FormLayout buildingFormLayout = new FormLayout(buildingNameField, buildingAddressField, saveBuildingButton, deleteBuildingButton, newBuildingButton);
         buildingFormLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("300px", 1));
-        buildingFormLayout.getStyle()
-                .set("background-color", "rgba(255, 255, 255, 0.95)")
-                .set("border-radius", "12px")
-                .set("box-shadow", "0 4px 16px rgba(0,0,0,0.2)")
-                .set("padding", "1.5rem");
 
-        buildingBinder.forField(buildingNameField)
-                .asRequired("Ime objekta je obvezno.")
-                .bind(Building::getName, Building::setName);
-        buildingBinder.forField(buildingAddressField)
-                .asRequired("Naslov objekta je obvezen.")
-                .bind(Building::getAddress, Building::setAddress);
-
+        buildingBinder.forField(buildingNameField).asRequired("Ime objekta je obvezno.").bind(Building::getName, Building::setName);
+        buildingBinder.forField(buildingAddressField).asRequired("Naslov objekta je obvezen.").bind(Building::getAddress, Building::setAddress);
 
         saveBuildingButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         saveBuildingButton.addClickListener(event -> saveBuilding());
 
         deleteBuildingButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
         deleteBuildingButton.addClickListener(event -> confirmDeleteBuilding());
-        deleteBuildingButton.setEnabled(false);
 
         newBuildingButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         newBuildingButton.addClickListener(event -> newBuilding());
 
         buildingManagementLayout.add(buildingGrid, buildingFormLayout);
 
-        buildingNameField.setVisible(false);
-        buildingAddressField.setVisible(false);
-        saveBuildingButton.setVisible(false);
-        deleteBuildingButton.setVisible(false);
+        // Formo na začetku skrijemo
+        editBuilding(null);
     }
 
     private void newBuilding() {
-        buildingBinder.setBean(new Building());
-        buildingNameField.setVisible(true);
-        buildingAddressField.setVisible(true);
-        saveBuildingButton.setVisible(true);
-        deleteBuildingButton.setEnabled(false);
+        editBuilding(new Building());
     }
 
     private void editBuilding(Building building) {
-        if (building == null) {
-            buildingNameField.setVisible(false);
-            buildingAddressField.setVisible(false);
-            saveBuildingButton.setVisible(false);
-            deleteBuildingButton.setEnabled(false);
-        } else {
-            buildingBinder.setBean(building);
-            buildingNameField.setVisible(true);
-            buildingAddressField.setVisible(true);
-            saveBuildingButton.setVisible(true);
-            deleteBuildingButton.setEnabled(true);
-        }
+        buildingBinder.setBean(building);
+        boolean isBuildingSelected = building != null;
+
+        buildingNameField.setVisible(isBuildingSelected);
+        buildingAddressField.setVisible(isBuildingSelected);
+        saveBuildingButton.setVisible(isBuildingSelected);
+        deleteBuildingButton.setVisible(isBuildingSelected && building.getId() != null);
     }
 
     private void saveBuilding() {
         Building building = buildingBinder.getBean();
-        if (building != null) {
-            try {
-                if (building.getId() == null && buildingRepository.findByName(building.getName()).isPresent()) {
-                    Notification.show("Objekt z imenom '" + building.getName() + "' že obstaja. Izberite drugo ime.", 5000, Notification.Position.MIDDLE)
-                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                    return;
-                }
-
-                buildingRepository.save(building);
-                Notification.show("Objekt '" + building.getName() + "' shranjen.", 2000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                refreshBuildingGrid();
-                buildingGrid.asSingleSelect().clear();
-            } catch (Exception e) {
-                Notification.show("Napaka pri shranjevanju objekta: " + e.getMessage(), 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        if (building != null && buildingBinder.writeBeanIfValid(building)) {
+            // Preverimo, če objekt s tem imenom že obstaja
+            if (building.getId() == null && buildingRepository.findByName(building.getName()).isPresent()) {
+                Notification.show("Objekt z imenom '" + building.getName() + "' že obstaja.", 4000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
             }
+            buildingRepository.save(building);
+            Notification.show("Objekt '" + building.getName() + "' shranjen.", 3000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            refreshBuildingGrid();
+            editBuilding(null);
         }
     }
 
     private void confirmDeleteBuilding() {
-        Building buildingToDelete = buildingBinder.getBean();
-        if (buildingToDelete == null || buildingToDelete.getId() == null) {
-            Notification.show("Ni izbranega objekta za brisanje.", 2000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+        Building building = buildingBinder.getBean();
+        if (building == null || building.getId() == null) return;
+
+        // Preverimo, če je objekt povezan z uporabniki ali zadevami
+        boolean isUsedByUser = userRepository.findAll().stream().anyMatch(u -> u.getManagedBuildings().contains(building));
+        boolean isUsedInCase = caseRepository.findAll().stream().anyMatch(c -> c.getBuildings().contains(building));
+
+        if (isUsedByUser || isUsedInCase) {
+            Notification.show("Objekta ni mogoče izbrisati, ker je v uporabi.", 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
 
-        ConfirmDialog dialog = new ConfirmDialog();
-        dialog.setHeader("Potrditev brisanja objekta");
-        dialog.setText("Ali res želite trajno izbrisati objekt '" + buildingToDelete.getName() + "'?");
-        dialog.setConfirmText("Izbriši");
+        ConfirmDialog dialog = new ConfirmDialog(
+                "Izbris objekta",
+                "Ali ste prepričani, da želite izbrisati objekt '" + building.getName() + "'?",
+                "Izbriši", e -> deleteBuilding(building),
+                "Prekliči", e -> {}
+        );
         dialog.setConfirmButtonTheme(ButtonVariant.LUMO_ERROR.getVariantName());
-        dialog.addConfirmListener(event -> deleteBuilding(buildingToDelete));
-        dialog.setCancelable(true);
-        dialog.setCancelText("Prekliči");
         dialog.open();
     }
 
     private void deleteBuilding(Building building) {
-        List<User> usersManagingBuilding = userRepository.findAll().stream()
-                .filter(u -> u.getManagedBuildings() != null && u.getManagedBuildings().contains(building))
-                .collect(Collectors.toList());
-
-        List<Case> casesWithBuilding = caseRepository.findAll().stream()
-                .filter(c -> c.getBuildings() != null && c.getBuildings().contains(building))
-                .collect(Collectors.toList());
-
-        if (!usersManagingBuilding.isEmpty() || !casesWithBuilding.isEmpty()) {
-            Notification.show("Objekta ni mogoče izbrisati, ker je še vedno povezan z uporabniki ali zadevami.", 5000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            return;
-        }
-
-        try {
-            buildingRepository.delete(building);
-            Notification.show("Objekt '" + building.getName() + "' uspešno izbrisan.", 2000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            refreshBuildingGrid();
-            buildingGrid.asSingleSelect().clear();
-            buildingNameField.clear();
-            buildingAddressField.clear();
-            buildingNameField.setVisible(false);
-            buildingAddressField.setVisible(false);
-            saveBuildingButton.setVisible(false);
-            deleteBuildingButton.setEnabled(false);
-        } catch (Exception e) {
-            Notification.show("Napaka pri brisanju objekta: " + e.getMessage(), 3000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            // Dodana bolj specifična obravnava napake, če pride do problema pri vezavi
-            if (!buildingBinder.isValid()) {
-                buildingBinder.validate(); // Ponovno validiraj, da prikažeš napake uporabniku
-                Notification.show("Prosimo, popravite napake v obrazcu za objekt.", 3000, Notification.Position.MIDDLE);
-            }
-        }
+        buildingRepository.delete(building);
+        Notification.show("Objekt '" + building.getName() + "' izbrisan.", 3000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        refreshBuildingGrid();
+        editBuilding(null);
     }
 
     private void refreshBuildingGrid() {
         buildingGrid.setItems(buildingRepository.findAll());
-        buildingBinder.readBean(null);
-        deleteBuildingButton.setEnabled(false);
     }
 }
