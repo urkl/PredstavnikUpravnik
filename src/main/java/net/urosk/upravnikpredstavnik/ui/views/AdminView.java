@@ -8,6 +8,8 @@ import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -25,6 +27,8 @@ import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
+import net.urosk.upravnikpredstavnik.service.ActiveUserService;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,7 +38,11 @@ import java.util.stream.Collectors;
 @PageTitle("Administracija")
 @PermitAll
 public class AdminView extends VerticalLayout {
+    private final ActiveUserService activeUserService; // <-- NOVO POLJE
 
+    // Postavitev za nov zavihek
+    private final VerticalLayout activeUsersLayout = new VerticalLayout();
+    private final Grid<User> activeUsersGrid = new Grid<>(User.class);
     private final UserRepository userRepository;
     private final BuildingRepository buildingRepository;
     private final CaseRepository caseRepository;
@@ -62,7 +70,8 @@ public class AdminView extends VerticalLayout {
     private final VerticalLayout buildingManagementLayout = new VerticalLayout();
 
 
-    public AdminView(UserRepository userRepository, BuildingRepository buildingRepository, CaseRepository caseRepository, AppSecurityProperties appSecurityProperties) {
+    public AdminView(ActiveUserService activeUserService, UserRepository userRepository, BuildingRepository buildingRepository, CaseRepository caseRepository, AppSecurityProperties appSecurityProperties) {
+        this.activeUserService = activeUserService;
         this.userRepository = userRepository;
         this.buildingRepository = buildingRepository;
         this.caseRepository = caseRepository;
@@ -78,6 +87,7 @@ public class AdminView extends VerticalLayout {
         configureTabs();
         configureUserManagement();
         configureBuildingManagement();
+        configureActiveUsersManagement(); // <-- Klic nove metode za konfiguracijo
 
         // Vsebinski kontejner, ki drži postavitve, ki se preklapljajo
         VerticalLayout contentContainer = new VerticalLayout(userManagementLayout, buildingManagementLayout);
@@ -96,27 +106,52 @@ public class AdminView extends VerticalLayout {
     private void configureTabs() {
         Tab userTab = new Tab("Upravljanje uporabnikov");
         Tab buildingTab = new Tab("Upravljanje objektov");
-        mainTabs.addClassName("layout");
-        mainTabs.add(userTab, buildingTab);
+        Tab activeUsersTab = new Tab("Aktivni uporabniki"); // <-- NOV ZAVIHEK
+
+        mainTabs.add(userTab, buildingTab, activeUsersTab);
         mainTabs.setSelectedTab(userTab);
         mainTabs.addSelectedChangeListener(event -> setContentForSelectedTab(event.getSelectedTab()));
         mainTabs.setWidthFull();
     }
 
+    private void configureActiveUsersManagement() {
+        activeUsersLayout.setPadding(false);
+        activeUsersLayout.setSpacing(true);
+
+        H2 sectionTitle = new H2("Trenutno prijavljeni uporabniki");
+
+        Button refreshButton = new Button("Osveži", new Icon(VaadinIcon.REFRESH), e -> refreshActiveUsersGrid());
+
+        activeUsersGrid.setColumns("name", "email");
+        activeUsersGrid.addColumn(user -> String.join(", ", user.getRoles()))
+                .setHeader("Vloge").setSortable(true);
+
+        activeUsersGrid.getColumns().forEach(col -> col.setAutoWidth(true));
+
+        activeUsersLayout.add(sectionTitle, refreshButton, activeUsersGrid);
+    }
+
+    private void refreshActiveUsersGrid() {
+        activeUsersGrid.setItems(activeUserService.getActiveUsers());
+    }
     private void setContentForSelectedTab(Tab selectedTab) {
-        // Skrij obe postavitvi
         userManagementLayout.setVisible(false);
         buildingManagementLayout.setVisible(false);
+        activeUsersLayout.setVisible(false); // <-- Skrijemo nov layout
 
-        // Prikaži samo izbrano
         if (selectedTab.getLabel().equals("Upravljanje uporabnikov")) {
             userManagementLayout.setVisible(true);
             refreshUserGrid();
         } else if (selectedTab.getLabel().equals("Upravljanje objektov")) {
             buildingManagementLayout.setVisible(true);
             refreshBuildingGrid();
+        } else if (selectedTab.getLabel().equals("Aktivni uporabniki")) {
+            activeUsersLayout.setVisible(true); // <-- Prikažemo nov layout
+            refreshActiveUsersGrid();
         }
     }
+
+
 
     private void configureUserManagement() {
         userManagementLayout.setPadding(false);
