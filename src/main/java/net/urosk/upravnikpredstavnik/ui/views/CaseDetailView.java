@@ -43,6 +43,7 @@ import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
+import net.urosk.upravnikpredstavnik.service.PdfExportService;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -82,13 +83,15 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
     private final Upload upload = new Upload();
 
     private final VerticalLayout subtaskComponent = new VerticalLayout();
-
-    public CaseDetailView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties, AppSecurityProperties appSecurityProperties, BuildingRepository buildingRepository) {
+    private final PdfExportService pdfExportService; // <-- NOVO POLJE
+    private final HorizontalLayout buttonsLayout = new HorizontalLayout();
+    public CaseDetailView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties, AppSecurityProperties appSecurityProperties, BuildingRepository buildingRepository, PdfExportService pdfExportService) {
         this.caseRepository = caseRepository;
         this.authenticatedUser = authenticatedUser;
         this.appProcessProperties = appProcessProperties;
         this.appSecurityProperties = appSecurityProperties;
         this.buildingRepository = buildingRepository;
+        this.pdfExportService = pdfExportService;
 
         setMaxWidth("900px");
         getStyle().set("margin", "0 auto");
@@ -115,9 +118,10 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
         HorizontalLayout buttons = new HorizontalLayout(saveButton, backButton);
         buttons.getStyle().set("margin-top", "1rem");
 
+        buttonsLayout.getStyle().set("margin-top", "1rem");
 
 
-        add(header, formLayout, new H2("Podnaloge"), subtaskComponent, new H2("Datoteke"), upload, filesGrid, buttons);
+        add(header, formLayout, new H2("Podnaloge"), subtaskComponent, new H2("Datoteke"), upload, filesGrid, buttonsLayout);
 
         binder.bindInstanceFields(this);
     }
@@ -396,15 +400,43 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
                 currentCase.setLastModifiedDate(LocalDateTime.now());
                 caseRepository.save(currentCase);
                 Notification.show("Zadeva shranjena.", 2000, Notification.Position.TOP_CENTER);
-                UI.getCurrent().navigate(ManagerKanbanView.class);
+                // Ostanemo na strani, da si lahko uporabnik prenese PDF
             }
         } catch (Exception e) {
             Notification.show("Napaka pri shranjevanju: " + e.getMessage(), 3000, Notification.Position.MIDDLE);
-            if (!binder.isValid()) {
-                binder.validate();
-                Notification.show("Prosimo, popravite napake v obrazcu.", 3000, Notification.Position.MIDDLE);
-            }
         }
+    }
+
+    private void setupActionButtons() {
+        buttonsLayout.removeAll();
+
+        Button saveButton = new Button("Shrani spremembe", new Icon(VaadinIcon.CHECK_CIRCLE_O), e -> saveCase());
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        // Gumb za prenos PDF-ja
+        Anchor downloadPdfLink = new Anchor();
+        Button downloadPdfButton = new Button("Izvozi v PDF", new Icon(VaadinIcon.DOWNLOAD_ALT));
+        downloadPdfButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+
+        // Pripravimo StreamResource, ki bo na zahtevo generiral PDF
+        StreamResource pdfResource = new StreamResource("zadeva-" + currentCase.getId() + ".pdf", () -> {
+            try {
+                return new ByteArrayInputStream(pdfExportService.generateCasePdf(currentCase));
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notification.show("Napaka pri generiranju PDF-ja.", 3000, Notification.Position.MIDDLE);
+                return new ByteArrayInputStream(new byte[0]);
+            }
+        });
+
+        downloadPdfLink.setHref(pdfResource);
+        downloadPdfLink.setTarget("_blank"); // Odpre v novem zavihku
+        downloadPdfLink.add(downloadPdfButton);
+
+        Button backButton = new Button("Nazaj na Kanban", e -> UI.getCurrent().navigate(ManagerKanbanView.class));
+        backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        buttonsLayout.add(saveButton, downloadPdfLink, backButton);
     }
 
     @Override
@@ -438,6 +470,7 @@ public class CaseDetailView extends VerticalLayout implements HasUrlParameter<St
                 filesGrid.setItems(currentCase.getAttachedFiles());
 
                 refreshSubtaskComponent();
+                setupActionButtons();
             } else {
                 UI.getCurrent().navigate(ManagerKanbanView.class);
             }

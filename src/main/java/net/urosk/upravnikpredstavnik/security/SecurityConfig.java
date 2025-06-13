@@ -37,6 +37,7 @@ public class SecurityConfig extends VaadinWebSecurity {
                         .requestMatchers("/themes/**").permitAll() // Teme
                         .requestMatchers("/images/*.png").permitAll() // Specifične PNG slike (verjetno redundantno)
                         .requestMatchers("/line-awesome/**").permitAll() // TO JE PREDLAGANI POPRAVEK
+                        .requestMatchers("/public/**").permitAll()
 
 
                 // Tukaj dodajte vse druge poti, ki morajo biti javno dostopne

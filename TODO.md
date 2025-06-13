@@ -13,4 +13,4 @@
 - [ ] Garaža v objekt
 - [ ] Spreminjanje statusa dobijo mail role ki niso stanovalec
 - [ ] Zaključeni taski naj se krčijo
-- [ ] Pošlji link predstavnik
+- [ x ] Pošlji link predstavnik

@@ -4,6 +4,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.contextmenu.ContextMenu;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.icon.Icon;
@@ -35,6 +36,23 @@ public class MainLayout extends AppLayout {
         addClassName("main-layout-dark-navbar");
         createTopNavBar();
     }
+    private Anchor createCalendarSubscriptionLink() {
+        Icon icon = VaadinIcon.CALENDAR_CLOCK.create();
+        icon.setSize("24px");
+        icon.getStyle().set("color", "white");
+        icon.getStyle().set("cursor", "pointer");
+        icon.getElement().setProperty("title", "Naroči se na koledar dogodkov");
+
+        // Ustvarimo Anchor, ki kaže na naš javni .ics feed
+        Anchor link = new Anchor("/public/calendar.ics", icon);
+        link.getElement().setAttribute("title", "Naroči se na koledar dogodkov (desni klik za kopiranje povezave)");
+
+        // Povemo brskalniku, naj datoteko prenese, namesto da se poskuša pomakniti nanjo
+        link.getElement().setAttribute("download", true);
+
+        link.getStyle().set("display", "flex").set("align-items", "center").set("height", "100%");
+        return link;
+    }
 
     private void createTopNavBar() {
         H1 logo = new H1("Upravnik & Predstavnik");
@@ -61,6 +79,8 @@ public class MainLayout extends AppLayout {
                     }
                 }
             });
+
+            navIcons.add(createCalendarSubscriptionLink());
 
             Avatar avatar = new Avatar(user.getName());
             avatar.getStyle().set("cursor", "pointer");
