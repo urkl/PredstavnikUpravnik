@@ -1,4 +1,3 @@
-// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/components/CommentsDialog.java
 package net.urosk.upravnikpredstavnik.ui.components;
 
 import com.vaadin.flow.component.Component;
@@ -18,11 +17,11 @@ import net.urosk.upravnikpredstavnik.data.entity.Comment;
 import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
+import net.urosk.upravnikpredstavnik.service.AuditService; // NOV IMPORT
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
-import java.util.Optional;
 
 public class CommentsDialog extends Dialog {
 
@@ -30,27 +29,29 @@ public class CommentsDialog extends Dialog {
     private final CaseRepository caseRepository;
     private final User currentUser;
     private final VerticalLayout commentsContainer;
-    private final Runnable onCloseCallback; // Klic, ki se izvede ob zaprtju
+    private final Runnable onCloseCallback;
+    private final AuditService auditService; // NOVO POLJE
+    private final AuthenticatedUser authenticatedUser;
 
-    public CommentsDialog(Case aCase, CaseRepository caseRepository, AuthenticatedUser authenticatedUser, Runnable onCloseCallback) {
+    // === SPREMENJEN KONSTRUKTOR ===
+    public CommentsDialog(Case aCase, CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AuditService auditService, Runnable onCloseCallback) {
         this.aCase = aCase;
         this.caseRepository = caseRepository;
         this.currentUser = authenticatedUser.get().orElse(null);
+        this.auditService = auditService; // Shrani servis
         this.onCloseCallback = onCloseCallback;
+        this.authenticatedUser = authenticatedUser;
 
-        // Nastavitve dialoga za boljšo odzivnost
         setHeaderTitle("Pogovor: " + aCase.getTitle());
         setDraggable(true);
         setResizable(true);
-        setWidth("min(90vw, 700px)"); // Uporabi 90% širine zaslona, ampak največ 700px
+        setWidth("min(90vw, 700px)");
         setHeight("80vh");
 
-        // --- Glavna postavitev ---
         VerticalLayout mainLayout = new VerticalLayout();
         mainLayout.setSizeFull();
         mainLayout.setPadding(false);
 
-        // --- Kontejner za komentarje (scrollable) ---
         commentsContainer = new VerticalLayout();
         commentsContainer.getStyle().set("overflow-y", "auto");
         commentsContainer.setSizeFull();
@@ -59,27 +60,17 @@ public class CommentsDialog extends Dialog {
         mainLayout.add(commentsContainer);
         mainLayout.expand(commentsContainer);
 
-        // --- Obrazec za vnos in gumb Zapri ---
-        // Obrazec je viden samo prijavljenim uporabnikom
         if (currentUser != null) {
-            Component commentForm = createCommentForm();
-            mainLayout.add(commentForm);
+            mainLayout.add(createCommentForm());
         } else {
             mainLayout.add(new Span("Za komentiranje se morate prijaviti."));
         }
 
         add(mainLayout);
 
-        // Gumb za zapiranje dodamo v nogo dialoga
-        Button closeButton = new Button("Zapri", e -> {
-
-            onCloseCallback.run();
-            close();
-        });
-        closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        Button closeButton = new Button("Zapri", e -> close());
         getFooter().add(closeButton);
 
-        // Dodamo listener, ki se sproži ob vsakem zaprtju dialoga
         addDialogCloseActionListener(e -> {
             if (onCloseCallback != null) {
                 onCloseCallback.run();
@@ -120,6 +111,10 @@ public class CommentsDialog extends Dialog {
         newComment.setTimestamp(LocalDateTime.now());
         aCase.getComments().add(newComment);
         caseRepository.save(aCase);
+        String userEmail = authenticatedUser.get().map(User::getEmail).orElse("Neznan uporabnik");
+        // === NOVO: Beleženje dogodka ===
+        auditService.log("NOV KOMENTAR", Case.class, aCase.getId(), "Dodan nov komentar.",userEmail);
+
         refreshComments();
     }
 

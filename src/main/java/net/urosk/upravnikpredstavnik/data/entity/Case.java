@@ -22,6 +22,8 @@ public class Case {
     private String status;
     @DBRef
     private User author;
+    private Set<User> coordinators = new HashSet<>(); // SPREMENJENO: Iz User v Set<User>
+    private Priority priority;
     @DBRef
     private User assignedTo;
     private List<Comment> comments = new ArrayList<>();

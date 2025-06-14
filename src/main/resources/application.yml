@@ -1,6 +1,15 @@
 app:
   admin-email: uros.kristan@gmail.com
 
+  info:
+    name: "BlokApp"
+    tagline: "Aplikacija za urejeno in prijazno komunikacijo med stanovalci, predstavniki in upravniki."
+
+  # NOVO: Nastavitve za pošiljanje e-pošte
+  mail:
+    enabled: false # Privzeto onemogočeno
+    from: "noreply@blokapp.si"
+
 
   security:
     allowed-mime-types:
@@ -39,9 +48,11 @@ app:
     remember-me-token: erf2šlrmo243imrio23rm23oirm23okemnfoi2w3efmnewofnweofnweffewfnwefewfo2ne392r3
 
 
-  # --- NOV RAZDELEK ZA DEFINICIJO MENIJA ---
   menu:
     items:
+      - view: net.urosk.upravnikpredstavnik.ui.views.DashboardView
+        icon: DASHBOARD
+        tooltip: "Nadzorna plošča"
       - view: net.urosk.upravnikpredstavnik.ui.views.AdminView
         icon: COG
         tooltip: "Administracija"
@@ -54,12 +65,18 @@ app:
       - view: net.urosk.upravnikpredstavnik.ui.views.CalendarView
         icon: CALENDAR
         tooltip: "Koledar"
+      - view: net.urosk.upravnikpredstavnik.ui.views.AuditView
+        icon: ARCHIVE
+        tooltip: "Zgodovina aktivnosti"
+      - view: net.urosk.upravnikpredstavnik.ui.views.FileArchiveView
+        icon: FILE
+        tooltip: "Pregled vseh datotek"
       - view: net.urosk.upravnikpredstavnik.ui.views.HelpView # NOV DODATEK ZA HELP VIEW
         icon: QUESTION_CIRCLE_O # Ikona za vprašaj
         tooltip: "Pomoč"
       - view: net.urosk.upravnikpredstavnik.ui.views.PublicCasesView # NOV DODATEK ZA HELP VIEW
         icon: USER # Ikona za vprašaj
-        tooltip: "Pomoč"
+        tooltip: "Javni pregled nalog"
 
   process:
     statuses:
@@ -82,12 +99,20 @@ server:
 
 spring:
   servlet:
-
-
-
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+
+
+  mail:
+    host: smtp.sendgrid.net
+    port: 587
+    username: apikey
+    password: ${SENDGRID_API_KEY}
+    properties:
+      mail.smtp:
+        auth: true
+        starttls.enable: true
   # MongoDB Connection
   data:
     mongodb:
@@ -119,6 +144,20 @@ vaadin:
   # For more information https://vaadin.com/docs/latest/flow/integrations/spring/configuration#special-configuration-parameters
   allowed-packages: com.vaadin,org.vaadin,com.flowingcode,net.urosk.upravnikpredstavnik,dev.hilla,
 
+
+
+
+
+
+
+
+
+management:
+  health:
+    mail:
+      enabled: false # Onemogoči preverjanje stanja poštnega strežnika
+  # ==================================
+  # --- NOV RAZDELEK ZA DEFINICIJO MENIJA ---
 # -------------------------------------------
 # BELEŽENJE (LOGGING)
 # -------------------------------------------

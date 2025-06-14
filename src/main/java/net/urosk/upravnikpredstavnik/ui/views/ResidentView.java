@@ -36,6 +36,7 @@ import net.urosk.upravnikpredstavnik.data.entity.User;
 import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
+import net.urosk.upravnikpredstavnik.service.AuditService;
 import net.urosk.upravnikpredstavnik.ui.components.CommentsDialog;
 
 import java.io.ByteArrayInputStream;
@@ -55,14 +56,16 @@ public class ResidentView extends VerticalLayout {
     private final AppProcessProperties appProcessProperties;
     private final BuildingRepository buildingRepository;
 
+    private final AuditService auditService;
     private final VerticalLayout casesLayout;
     private final Optional<User> maybeUser;
 
-    public ResidentView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties, BuildingRepository buildingRepository) {
+    public ResidentView(CaseRepository caseRepository, AuthenticatedUser authenticatedUser, AppProcessProperties appProcessProperties, BuildingRepository buildingRepository, AuditService auditService) {
         this.caseRepository = caseRepository;
         this.authenticatedUser = authenticatedUser;
         this.appProcessProperties = appProcessProperties;
         this.buildingRepository = buildingRepository;
+        this.auditService = auditService;
         this.maybeUser = this.authenticatedUser.get();
 
         setAlignItems(Alignment.CENTER);
@@ -260,7 +263,7 @@ public class ResidentView extends VerticalLayout {
         commentsButton.setText(String.valueOf(commentCount));
         commentsButton.setTooltipText("Prikaži komentarje (" + commentCount + ")");
         commentsButton.addClickListener(e -> {
-            CommentsDialog dialog = new CommentsDialog(caseItem, caseRepository, authenticatedUser ,()->{});
+            CommentsDialog dialog = new CommentsDialog(caseItem, caseRepository, authenticatedUser ,auditService,()->{});
 
             dialog.open();
         });

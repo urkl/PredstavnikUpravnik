@@ -22,16 +22,7 @@
         .comment-header .author { font-weight: bold; color: #4a5568; }
         .comment-content { margin: 0; line-height: 1.4; }
         .no-content { color: #a0aec0; font-style: italic; }
-
-        /* --- NOV STIL ZA NOGO --- */
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 15px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 9pt;
-            color: #718096;
-        }
+        .footer { text-align: center; margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #718096; }
     </style>
 </head>
 <body>
@@ -68,6 +59,10 @@
     <tr>
         <td class="label">Objekti:</td>
         <td colspan="3">${buildings! 'Niso določeni'}</td>
+    </tr>
+    <tr>
+        <td class="label">Koordinator(ji):</td>
+        <td colspan="3">${coordinators! 'Ni določen'}</td>
     </tr>
 </table>
 

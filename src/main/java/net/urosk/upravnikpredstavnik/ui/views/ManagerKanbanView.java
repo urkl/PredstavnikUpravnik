@@ -1,8 +1,6 @@
-// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/views/ManagerKanbanView.java
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.card.Card;
@@ -16,85 +14,157 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.BoxSizing;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.progressbar.ProgressBar;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
-import net.urosk.upravnikpredstavnik.data.entity.Building;
-import net.urosk.upravnikpredstavnik.data.entity.Case;
-import net.urosk.upravnikpredstavnik.data.entity.Subtask;
+import net.urosk.upravnikpredstavnik.data.entity.*;
+import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
+import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
+import net.urosk.upravnikpredstavnik.service.AuditService;
+import net.urosk.upravnikpredstavnik.service.PdfExportService;
+import net.urosk.upravnikpredstavnik.ui.components.CaseFormDialog;
 import net.urosk.upravnikpredstavnik.ui.components.CommentsDialog;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Route(value = "kanban", layout = MainLayout.class)
 @PageTitle("Kanban Pregled")
 @PermitAll
-public class ManagerKanbanView extends HorizontalLayout {
+public class ManagerKanbanView extends VerticalLayout {
 
     private final CaseRepository caseRepository;
-    private final Map<String, VerticalLayout> statusColumns = new HashMap<>();
+    private final BuildingRepository buildingRepository;
+    private final UserRepository userRepository;
+    private final AuditService auditService;
+    private final PdfExportService pdfExportService;
     private final AppProcessProperties processProperties;
     private final AuthenticatedUser authenticatedUser;
 
-    public ManagerKanbanView(CaseRepository caseRepository, AppProcessProperties processProperties, AuthenticatedUser authenticatedUser) {
+    private final Map<String, VerticalLayout> statusColumns = new HashMap<>();
+    private final TextField searchField = new TextField();
+    private final HorizontalLayout board = new HorizontalLayout();
+
+    public ManagerKanbanView(CaseRepository caseRepository, AppProcessProperties processProperties, AuthenticatedUser authenticatedUser, BuildingRepository buildingRepository, UserRepository userRepository, AuditService auditService, PdfExportService pdfExportService) {
         this.caseRepository = caseRepository;
         this.processProperties = processProperties;
         this.authenticatedUser = authenticatedUser;
-        setSizeFull();
-        setSpacing(true);
-        addClassName("kanban-board");
+        this.buildingRepository = buildingRepository;
+        this.userRepository = userRepository;
+        this.auditService = auditService;
+        this.pdfExportService = pdfExportService;
 
+        setSizeFull();
+        setSpacing(false);
+        setPadding(false);
+        addClassName("kanban-view");
+
+        add(createToolbar());
+
+        board.setSizeFull();
+        board.setSpacing(true);
+        board.addClassName("kanban-board");
         for (String statusKey : processProperties.getStatuses().keySet()) {
-            String displayName = processProperties.getStatuses().get(statusKey);
-            VerticalLayout column = createStatusColumn(statusKey, displayName);
+            VerticalLayout column = createStatusColumn(statusKey, processProperties.getStatuses().get(statusKey));
             statusColumns.put(statusKey, column);
-            add(column);
+            board.add(column);
         }
 
-        loadAndDisplayCases();
+        add(board);
+        loadAndDisplayCases("");
     }
+
+    private HorizontalLayout createToolbar() {
+        searchField.setPlaceholder("Išči...");
+        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        searchField.setClearButtonVisible(true);
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.addValueChangeListener(e -> loadAndDisplayCases(e.getValue()));
+
+        Button addCaseButton = new Button("Nova zadeva", new Icon(VaadinIcon.PLUS));
+        addCaseButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addCaseButton.addClickListener(e -> {
+            CaseFormDialog dialog = new CaseFormDialog(new Case(), caseRepository, buildingRepository, userRepository, processProperties, authenticatedUser, auditService, pdfExportService, () -> loadAndDisplayCases(searchField.getValue()));
+            dialog.open();
+        });
+
+        HorizontalLayout toolbar = new HorizontalLayout(searchField, addCaseButton);
+        toolbar.setWidthFull();
+        toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        toolbar.setPadding(true);
+        toolbar.setBoxSizing(BoxSizing.BORDER_BOX);
+        return toolbar;
+    }
+
+    private void loadAndDisplayCases(String searchTerm) {
+        statusColumns.values().forEach(column -> column.getChildren().filter(Card.class::isInstance).forEach(column::remove));
+        List<Case> cases = caseRepository.findAll();
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            String lowerCaseFilter = searchTerm.toLowerCase().trim();
+            cases = cases.stream().filter(c ->
+                    (c.getTitle() != null && c.getTitle().toLowerCase().contains(lowerCaseFilter)) ||
+                            (c.getDescription() != null && c.getDescription().toLowerCase().contains(lowerCaseFilter))
+            ).collect(Collectors.toList());
+        }
+        cases.forEach(caseItem -> {
+            VerticalLayout column = statusColumns.get(caseItem.getStatus());
+            if (column != null) {
+                column.add(createCaseCard(caseItem));
+            }
+        });
+    }
+
+// ... v razredu ManagerKanbanView ...
 
     private VerticalLayout createStatusColumn(String statusKey, String displayName) {
         H3 title = new H3(displayName);
         title.addClassNames("title");
         VerticalLayout column = new VerticalLayout(title);
-        column.addClassName("kanban-column");
+        column.setClassName("kanban-column");
 
         DropTarget<VerticalLayout> dropTarget = DropTarget.create(column);
         dropTarget.setActive(true);
 
         dropTarget.addDropListener(event -> {
-            if (event.getDragData().isEmpty()) return;
-            Optional<Component> dragSourceOpt = event.getDragSourceComponent();
-            if (dragSourceOpt.isEmpty()) return;
-            if (!(dragSourceOpt.get() instanceof Card draggedCard)) return;
+            event.getDragSourceComponent().ifPresent(draggedComponent -> {
+                // Preverimo, ali je premaknjen element res kartica
+                if (draggedComponent instanceof Card) {
+                    event.getDragData()
+                            .flatMap(data -> caseRepository.findById((String) data))
+                            .ifPresent(caseToUpdate -> {
+                                // Preverimo, ali je stolpec drugačen od trenutnega
+                                if (!column.equals(draggedComponent.getParent().orElse(null))) {
 
-            event.getDragData().flatMap(data -> caseRepository.findById((String) data)).ifPresent(caseToUpdate -> {
-                if (!column.equals(draggedCard.getParent().orElse(null))) {
-                    caseToUpdate.setStatus(statusKey);
-                    caseRepository.save(caseToUpdate);
-                    draggedCard.getParent().ifPresent(parent -> ((VerticalLayout) parent).remove(draggedCard));
-                    column.add(draggedCard);
-                    addStatusTheme(draggedCard, statusKey);
+                                    // --- LOGIKA ZA POSODOBITEV IN OSVEŽITEV ---
+                                    String oldStatus = caseToUpdate.getStatus();
+                                    caseToUpdate.setStatus(statusKey);
+                                    caseRepository.save(caseToUpdate);
+
+                                    String userEmail = authenticatedUser.get().map(User::getEmail).orElse("SYSTEM");
+                                    String details = "Status spremenjen iz '" + oldStatus + "' v '" + statusKey + "'";
+                                    auditService.log("SPREMEMBA STATUSA", Case.class, caseToUpdate.getId(), details, userEmail);
+
+                                    // === KLJUČNI POPRAVEK: Osveži celoten pogled ===
+                                    // Namesto ročnega premikanja komponente, ponovno naložimo vse zadeve.
+                                    // S tem zagotovimo, da so vsi podatki na vseh karticah sveži.
+                                    loadAndDisplayCases(searchField.getValue());
+                                    // ===============================================
+                                }
+                            });
                 }
             });
         });
@@ -102,237 +172,158 @@ public class ManagerKanbanView extends HorizontalLayout {
         return column;
     }
 
-    private void loadAndDisplayCases() {
-        statusColumns.values().forEach(column -> {
-            column.getChildren()
-                    .filter(component -> component instanceof Card)
-                    .toList()
-                    .forEach(column::remove);
-        });
-
-        caseRepository.findAll().forEach(caseItem -> {
-            VerticalLayout column = statusColumns.get(caseItem.getStatus());
-            if (column != null) {
-                Card card = createCaseCard(caseItem);
-                DragSource<Card> dragSource = DragSource.create(card);
-                dragSource.setEffectAllowed(EffectAllowed.ALL);
-                dragSource.addDragStartListener(event -> dragSource.setDragData(caseItem.getId()));
-                column.add(card);
-            }
-        });
-    }
+// ... ostale metode ostanejo enake ...
 
     private Card createCaseCard(Case caseItem) {
         Card card = new Card();
-        card.setWidth("300px");
-        card.addClassName("kanban-card");
+        card.setWidth("320px");
+        card.setClassName("kanban-card");
+        DragSource.create(card).setDragData(caseItem.getId());
 
-        // --- GLAVA KARTICE ---
+        // GLAVA KARTICE
         Span title = new Span(caseItem.getTitle());
         title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
-
-        Button editButton = new Button(new Icon(VaadinIcon.EXTERNAL_LINK));
+        HorizontalLayout titleRow = new HorizontalLayout(title);
+        if (caseItem.getPriority() != null) {
+            Icon priorityIcon = new Icon(VaadinIcon.FLAG);
+            priorityIcon.setColor(caseItem.getPriority().getColor());
+            priorityIcon.setTooltipText("Prioriteta: " + caseItem.getPriority().getDisplayName());
+            titleRow.add(priorityIcon);
+        }
+        Button editButton = new Button(new Icon(VaadinIcon.PENCIL), e -> new CaseFormDialog(caseItem, caseRepository, buildingRepository, userRepository, processProperties, authenticatedUser, auditService, pdfExportService, () -> loadAndDisplayCases(searchField.getValue())).open());
         editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        editButton.getElement().getStyle().set("margin-left", "auto");
         editButton.setTooltipText("Uredi zadevo");
-        editButton.addClickListener(e -> UI.getCurrent().navigate(CaseDetailView.class, caseItem.getId()));
+        HorizontalLayout header = new HorizontalLayout(titleRow, editButton);
+        header.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        header.setWidthFull();
 
-        HorizontalLayout cardHeader = new HorizontalLayout(title, editButton);
-        cardHeader.setWidthFull();
-        cardHeader.setAlignItems(FlexComponent.Alignment.CENTER);
-        card.add(cardHeader);
-
-        // --- VSEBINA KARTICE ---
+        // VSEBINA KARTICE
         Span description = new Span(caseItem.getDescription());
-        description.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.Top.SMALL);
-        card.add(description);
+        description.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.Vertical.SMALL);
 
+        VerticalLayout detailsLayout = new VerticalLayout(description);
+        detailsLayout.setPadding(false);
+        detailsLayout.setSpacing(false);
+
+        // === POPRAVLJENO: Prikaz objektov z razmikom ===
         if (caseItem.getBuildings() != null && !caseItem.getBuildings().isEmpty()) {
-            HorizontalLayout buildingsLayout = new HorizontalLayout();
+            Icon buildingIcon = VaadinIcon.HOME_O.create();
+            Span buildingText = new Span(caseItem.getBuildings().stream().map(Building::getName).collect(Collectors.joining(", ")));
+            HorizontalLayout buildingsLayout = new HorizontalLayout(buildingIcon, buildingText);
             buildingsLayout.setAlignItems(FlexComponent.Alignment.CENTER);
             buildingsLayout.setSpacing(true);
-            buildingsLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL);
-            Icon buildingIcon = VaadinIcon.HOME_O.create();
-            buildingIcon.setColor("var(--lumo-contrast-50pct)");
-            buildingIcon.setSize("16px");
-            String buildingNames = caseItem.getBuildings().stream().map(Building::getName).collect(Collectors.joining(", "));
-            Span buildingsSpan = new Span(buildingNames);
-            buildingsSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY);
-            buildingsLayout.add(buildingIcon, buildingsSpan);
-            card.add(buildingsLayout);
+            buildingsLayout.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.Top.XSMALL);
+            detailsLayout.add(buildingsLayout);
         }
 
-        if (caseItem.getStartDate() != null || caseItem.getEndDate() != null) {
-            HorizontalLayout datesLayout = new HorizontalLayout();
-            datesLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-            datesLayout.setSpacing(true);
-            datesLayout.addClassNames(LumoUtility.Margin.Top.XSMALL, LumoUtility.Margin.Bottom.XSMALL);
-            Icon calendarIcon = VaadinIcon.CALENDAR_O.create();
-            calendarIcon.setColor("var(--lumo-contrast-50pct)");
-            calendarIcon.setSize("16px");
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d.M.yyyy", new Locale("sl", "SI"));
-            String dateText = "";
-            if (caseItem.getStartDate() != null && caseItem.getEndDate() != null) {
-                dateText = "Od " + caseItem.getStartDate().format(formatter) + " do " + caseItem.getEndDate().format(formatter);
-            } else if (caseItem.getStartDate() != null) {
-                dateText = "Začetek: " + caseItem.getStartDate().format(formatter);
-            } else if (caseItem.getEndDate() != null) {
-                dateText = "Konec: " + caseItem.getEndDate().format(formatter);
-            }
-            Span datesSpan = new Span(dateText);
-            datesSpan.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY);
-            datesLayout.add(calendarIcon, datesSpan);
-            card.add(datesLayout);
+        // === POPRAVLJENO: Prikaz koordinatorjev z razmikom ===
+        if (caseItem.getCoordinators() != null && !caseItem.getCoordinators().isEmpty()) {
+            Icon coordinatorIcon = VaadinIcon.USER_STAR.create();
+            Span coordinatorText = new Span("Koordinatorji: " + caseItem.getCoordinators().stream().map(User::getName).collect(Collectors.joining(", ")));
+            HorizontalLayout coordinatorsLayout = new HorizontalLayout(coordinatorIcon, coordinatorText);
+            coordinatorsLayout.setAlignItems(FlexComponent.Alignment.CENTER);
+            coordinatorsLayout.setSpacing(true);
+            coordinatorsLayout.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.Top.XSMALL);
+            detailsLayout.add(coordinatorsLayout);
         }
 
-        // --- PODNALOGE (SUBTASKS) ---
-        VerticalLayout subtasksContainer = new VerticalLayout();
-        subtasksContainer.setPadding(false);
-        subtasksContainer.setSpacing(false);
-        subtasksContainer.addClassName(LumoUtility.Margin.Top.MEDIUM);
-        ProgressBar progressBar = createSubtaskProgressBar(caseItem);
-        subtasksContainer.add(progressBar);
+        // PODNALOGE
+        VerticalLayout subtasksContainer = createSubtasksComponent(caseItem);
+
+        // NOGA KARTICE
+        Span author = new Span("Prijavil: " + (caseItem.getAuthor() != null ? caseItem.getAuthor().getName() : "Neznan"));
+        author.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.TERTIARY);
+        Button commentsButton = new Button(new Icon(VaadinIcon.COMMENTS_O));
+        commentsButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        int commentCount = caseItem.getComments() != null ? caseItem.getComments().size() : 0;
+        commentsButton.setText(String.valueOf(commentCount));
+        commentsButton.setTooltipText("Prikaži komentarje (" + commentCount + ")");
+        commentsButton.addClickListener(e -> new CommentsDialog(caseItem, caseRepository, authenticatedUser, auditService, () -> loadAndDisplayCases(searchField.getValue())).open());
+        Div spacer = new Div();
+        HorizontalLayout footer = new HorizontalLayout(author, spacer, commentsButton);
+        footer.setAlignItems(FlexComponent.Alignment.CENTER);
+        footer.setWidthFull();
+        footer.expand(spacer);
+
+        card.add(header, detailsLayout, subtasksContainer, footer);
+        addStatusTheme(card, caseItem.getStatus());
+        return card;
+    }
+
+    private VerticalLayout createSubtasksComponent(Case caseItem) {
+        VerticalLayout container = new VerticalLayout();
+        container.setPadding(false);
+        container.setSpacing(false);
+        container.addClassName(LumoUtility.Margin.Top.MEDIUM);
+
+        ProgressBar progressBar = new ProgressBar();
+        progressBar.setWidthFull();
+        updateProgressBar(progressBar, caseItem);
+        if (caseItem.getSubtasks() != null && !caseItem.getSubtasks().isEmpty()) {
+            container.add(progressBar);
+        }
+
         VerticalLayout checkboxLayout = new VerticalLayout();
         checkboxLayout.setPadding(false);
         checkboxLayout.setSpacing(false);
         if (caseItem.getSubtasks() != null) {
             caseItem.getSubtasks().forEach(subtask -> checkboxLayout.add(createSubtaskCheckbox(subtask, caseItem, progressBar)));
         }
-        subtasksContainer.add(checkboxLayout);
-        HorizontalLayout addSubtaskControls = createAddSubtaskControls(caseItem, checkboxLayout, progressBar);
-        subtasksContainer.add(addSubtaskControls);
-        card.add(subtasksContainer);
-
-        // --- NOGA KARTICE (POSODOBLJENA LOGIKA) ---
-        Span author = new Span("Prijavil: " + caseItem.getAuthor().getName());
-        author.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.TERTIARY);
-
-        Button commentsButton = new Button(new Icon(VaadinIcon.COMMENTS_O));
-        commentsButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        int commentCount = caseItem.getComments() != null ? caseItem.getComments().size() : 0;
-        commentsButton.setText(String.valueOf(commentCount));
-        commentsButton.setTooltipText("Prikaži komentarje (" + commentCount + ")");
-        commentsButton.addClickListener(e -> {
-            CommentsDialog dialog = new CommentsDialog(caseItem, caseRepository, authenticatedUser,this::loadAndDisplayCases);
-
-            dialog.open();
-        });
-
-        Span timeInfo = new Span(formatTimeAgo(caseItem.getCreatedDate()));
-        timeInfo.addClassNames(LumoUtility.FontSize.XSMALL, LumoUtility.TextColor.TERTIARY);
-
-        // Avtor na levi, ostalo na desni
-        HorizontalLayout cardFooter = new HorizontalLayout(author, commentsButton, timeInfo);
-        cardFooter.setAlignItems(FlexComponent.Alignment.CENTER);
-        cardFooter.setWidthFull();
-        // Pomaknemo gumb in čas na desno stran s praznim Div elementom, ki se razširi
-        Div spacer = new Div();
-        cardFooter.expand(spacer); // Div bo zavzel ves preostali prostor
-        cardFooter.addComponentAtIndex(1, spacer); // Dodamo ga med avtorja in gumb
-
-        cardFooter.addClassName(LumoUtility.Margin.Top.MEDIUM);
-        card.add(cardFooter);
-
-        addStatusTheme(card, caseItem.getStatus());
-        return card;
+        container.add(checkboxLayout, createAddSubtaskControls(caseItem));
+        return container;
     }
 
     private Checkbox createSubtaskCheckbox(Subtask subtask, Case parentCase, ProgressBar progressBar) {
         Checkbox checkbox = new Checkbox(subtask.getTask(), subtask.isCompleted());
-
-        Runnable updateStyle = () -> {
-            if (checkbox.getValue()) {
-                checkbox.getStyle().set("text-decoration", "line-through").set("color", "var(--lumo-secondary-text-color)");
-            } else {
-                checkbox.getStyle().remove("text-decoration").remove("color");
-            }
-        };
-        updateStyle.run();
-
         checkbox.addValueChangeListener(event -> {
             subtask.setCompleted(event.getValue());
             caseRepository.save(parentCase);
-            updateStyle.run();
             updateProgressBar(progressBar, parentCase);
-            Notification.show("Stanje podnaloge posodobljeno.", 1000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            String details = "Stanje podnaloge '" + subtask.getTask() + "' spremenjeno na " + (event.getValue() ? "dokončano." : "nedokončano.");
+            String userEmail = authenticatedUser.get().map(User::getEmail).orElse("Neznan uporabnik");
+            auditService.log("POSODOBITEV PODNALOGE", Case.class, parentCase.getId(), details,userEmail);
         });
-
         return checkbox;
     }
 
-    private HorizontalLayout createAddSubtaskControls(Case caseItem, VerticalLayout checkboxLayout, ProgressBar progressBar) {
-        Button toggleAddSubtaskBtn = new Button("Dodaj podnalogo", new Icon(VaadinIcon.PLUS_CIRCLE));
-        toggleAddSubtaskBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
-
+    private HorizontalLayout createAddSubtaskControls(Case caseItem) {
         TextField newSubtaskField = new TextField();
         newSubtaskField.setPlaceholder("Nova podnaloga...");
         newSubtaskField.setWidth("180px");
 
-        Button confirmAddBtn = new Button(new Icon(VaadinIcon.CHECK));
-        confirmAddBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
-
-        HorizontalLayout addSubtaskRow = new HorizontalLayout(newSubtaskField, confirmAddBtn);
-        addSubtaskRow.setVisible(false);
-        addSubtaskRow.setAlignItems(FlexComponent.Alignment.BASELINE);
-
-        toggleAddSubtaskBtn.addClickListener(e -> {
-            addSubtaskRow.setVisible(true);
-            toggleAddSubtaskBtn.setVisible(false);
-            newSubtaskField.focus();
-        });
-
-        confirmAddBtn.addClickListener(e -> {
-            String newTaskText = newSubtaskField.getValue();
-            if (newTaskText != null && !newTaskText.trim().isEmpty()) {
-                Subtask newSubtask = new Subtask();
-                newSubtask.setTask(newTaskText);
-                newSubtask.setCompleted(false);
-
-                if (caseItem.getSubtasks() == null) {
-                    caseItem.setSubtasks(new ArrayList<>());
-                }
-                caseItem.getSubtasks().add(newSubtask);
-                caseRepository.save(caseItem);
-
-                Checkbox newCheckbox = createSubtaskCheckbox(newSubtask, caseItem, progressBar);
-                checkboxLayout.add(newCheckbox);
-                updateProgressBar(progressBar, caseItem);
-
-                newSubtaskField.clear();
-                addSubtaskRow.setVisible(false);
-                toggleAddSubtaskBtn.setVisible(true);
+        Button confirmAddBtn = new Button(new Icon(VaadinIcon.PLUS), e -> {
+            String taskText = newSubtaskField.getValue();
+            if (taskText != null && !taskText.trim().isEmpty()) {
+                if (caseItem.getSubtasks() == null) caseItem.setSubtasks(new ArrayList<>());
+                caseItem.getSubtasks().add(new Subtask(taskText, false));
+                Case savedCase = caseRepository.save(caseItem);
+                String userEmail = authenticatedUser.get().map(User::getEmail).orElse("Neznan uporabnik");
+                auditService.log("DODAJANJE PODNALOGE", Case.class, savedCase.getId(), "Dodana: " + taskText,userEmail);
+                loadAndDisplayCases(searchField.getValue());
             }
         });
+        confirmAddBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
 
-        HorizontalLayout wrapper = new HorizontalLayout(toggleAddSubtaskBtn, addSubtaskRow);
-        wrapper.setAlignItems(FlexComponent.Alignment.CENTER);
-        return wrapper;
-    }
-
-    private ProgressBar createSubtaskProgressBar(Case caseItem) {
-        ProgressBar progressBar = new ProgressBar();
-        progressBar.setWidthFull();
-        updateProgressBar(progressBar, caseItem);
-        return progressBar;
+        HorizontalLayout layout = new HorizontalLayout(newSubtaskField, confirmAddBtn);
+        layout.setAlignItems(FlexComponent.Alignment.BASELINE);
+        return layout;
     }
 
     private void updateProgressBar(ProgressBar progressBar, Case caseItem) {
         if (caseItem.getSubtasks() == null || caseItem.getSubtasks().isEmpty()) {
             progressBar.setVisible(false);
-            return;
+        } else {
+            progressBar.setVisible(true);
+            long total = caseItem.getSubtasks().size();
+            long completed = caseItem.getSubtasks().stream().filter(Subtask::isCompleted).count();
+            progressBar.setValue((double) completed / total);
         }
-        progressBar.setVisible(true);
-        long total = caseItem.getSubtasks().size();
-        long completed = caseItem.getSubtasks().stream().filter(Subtask::isCompleted).count();
-        progressBar.setValue((double) completed / total);
     }
 
     private void addStatusTheme(Card card, String status) {
         card.removeClassName("status-predlog");
         card.removeClassName("status-v-delu");
         card.removeClassName("status-zakljuceno");
-
         String theme = switch (status) {
             case "PREDLOG", "V_PREGLEDU" -> "status-predlog";
             case "POTRJENO", "V_DELU" -> "status-v-delu";
@@ -340,18 +331,5 @@ public class ManagerKanbanView extends HorizontalLayout {
             default -> "";
         };
         card.addClassName(theme);
-    }
-
-    private String formatTimeAgo(LocalDateTime createdDate) {
-        if (createdDate == null) return "";
-        Duration duration = Duration.between(createdDate, LocalDateTime.now());
-
-        if (duration.toMinutes() < 1) return "pravkar";
-        if (duration.toMinutes() < 60) return "pred " + duration.toMinutes() + " min";
-        if (duration.toHours() < 24) return "pred " + duration.toHours() + " urami";
-        if (duration.toDays() < 7) return "pred " + duration.toDays() + " dnevi";
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d. MMMM yyyy", new Locale("sl", "SI"));
-        return "dne " + createdDate.format(formatter);
     }
 }
