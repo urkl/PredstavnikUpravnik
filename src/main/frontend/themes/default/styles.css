@@ -76,7 +76,28 @@ body {
 /*    height: 100vh;*/
 /*    margin: 0;*/
 /*}*/
+/* ... ostali stili ... */
 
+/* Stil za glavno postavitev */
+.main-layout::part(navbar) {
+    background-color: #1C2833; /* Temno modra/siva barva za zgornjo vrstico */
+    color: white; /* Bel tekst za naslov */
+    box-shadow: var(--lumo-box-shadow-s);
+    padding: 0 var(--lumo-space-m);
+}
+
+/* Poskrbimo, da so ikone in naslov v zgornji vrstici beli */
+.main-layout [slot='navbar'] h1,
+.main-layout [slot='navbar'] vaadin-icon,
+.main-layout [slot='navbar'] vaadin-drawer-toggle {
+    color: white;
+}
+
+/* Dodamo belo obrobo avatarju, da je viden na temnem ozadju */
+.main-layout .main-layout-avatar {
+    border: 2px solid var(--lumo-primary-contrast-color);
+    background-color: white;
+}
 
 
 

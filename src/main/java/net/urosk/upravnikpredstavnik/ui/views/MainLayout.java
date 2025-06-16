@@ -1,21 +1,26 @@
+// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/views/MainLayout.java
 package net.urosk.upravnikpredstavnik.ui.views;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.contextmenu.ContextMenu;
-import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Hr;
+import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.router.RouterLink;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.sidenav.SideNav;
+import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.router.AfterNavigationEvent;
+import com.vaadin.flow.router.AfterNavigationObserver;
+import com.vaadin.flow.router.PageTitle;
+import net.urosk.upravnikpredstavnik.config.AppInfoProperties;
 import net.urosk.upravnikpredstavnik.config.AppMenuProperties;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
 import net.urosk.upravnikpredstavnik.data.entity.User;
-
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
 import java.util.Collections;
@@ -23,74 +28,50 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class MainLayout extends AppLayout {
+public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     private final AuthenticatedUser authenticatedUser;
     private final AppMenuProperties menuProperties;
     private final AppSecurityProperties securityProperties;
+    private final AppInfoProperties appInfoProperties;
 
-    public MainLayout(AuthenticatedUser authenticatedUser, AppMenuProperties menuProperties, AppSecurityProperties securityProperties) {
+    private final H1 viewTitle = new H1();
+
+    public MainLayout(AuthenticatedUser authenticatedUser, AppMenuProperties menuProperties, AppSecurityProperties securityProperties, AppInfoProperties appInfoProperties) {
         this.authenticatedUser = authenticatedUser;
         this.menuProperties = menuProperties;
         this.securityProperties = securityProperties;
-        addClassName("main-layout-dark-navbar");
-        createTopNavBar();
-    }
-    private Anchor createCalendarSubscriptionLink() {
-        Icon icon = VaadinIcon.CALENDAR_CLOCK.create();
-        icon.setSize("24px");
-        icon.getStyle().set("color", "white");
-        icon.getStyle().set("cursor", "pointer");
-        icon.getElement().setProperty("title", "Naroči se na koledar dogodkov");
+        this.appInfoProperties = appInfoProperties;
 
-        // Ustvarimo Anchor, ki kaže na naš javni .ics feed
-        Anchor link = new Anchor("/public/calendar.ics", icon);
-        link.getElement().setAttribute("title", "Naroči se na koledar dogodkov (desni klik za kopiranje povezave)");
+        setPrimarySection(Section.DRAWER);
+        setDrawerOpened(false);
 
-        // Povemo brskalniku, naj datoteko prenese, namesto da se poskuša pomakniti nanjo
-        link.getElement().setAttribute("download", true);
 
-        link.getStyle().set("display", "flex").set("align-items", "center").set("height", "100%");
-        return link;
+        addToNavbar(true, createHeaderContent());
+        addToDrawer(createDrawerContent());
+
+        addClassName("main-layout");
     }
 
-    private void createTopNavBar() {
-        H1 logo = new H1("Upravnik & Predstavnik");
-        logo.addClassNames("text-l", "m-m");
-        logo.getStyle().set("color", "white");
+    private Component createHeaderContent() {
+        DrawerToggle toggle = new DrawerToggle();
+        toggle.setAriaLabel("Menu toggle");
+        toggle.setTooltipText("Meni");
 
-        HorizontalLayout navIcons = new HorizontalLayout();
-        navIcons.setSpacing(true);
-        navIcons.setAlignItems(FlexComponent.Alignment.CENTER);
+        viewTitle.getStyle().set("font-size", "var(--lumo-font-size-l)").set("margin", "0");
+
+        HorizontalLayout header = new HorizontalLayout(toggle, viewTitle);
+        header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        header.expand(viewTitle);
+        header.setWidth("100%");
+        header.addClassNames("py-0", "px-m");
 
         Optional<User> maybeUser = authenticatedUser.get();
         if (maybeUser.isPresent()) {
             User user = maybeUser.get();
-            Set<String> userRoles = user.getRoles();
-
-            menuProperties.getItems().forEach(item -> {
-                if (isAccessGranted(item.getView(), userRoles)) {
-                    try {
-                        VaadinIcon vaadinIcon = VaadinIcon.valueOf(item.getIcon());
-                        Class<? extends Component> viewClass = (Class<? extends Component>) Class.forName(item.getView());
-                        navIcons.add(createIconLink(vaadinIcon, item.getTooltip(), viewClass));
-                    } catch (ClassNotFoundException e) {
-                        System.err.println("Meni-item error: Razred ni najden: " + item.getView());
-                    }
-                }
-            });
-
-            navIcons.add(createCalendarSubscriptionLink());
-
             Avatar avatar = new Avatar(user.getName());
+            avatar.setClassName("main-layout-avatar");
             avatar.getStyle().set("cursor", "pointer");
-
-            // --- TUKAJ JE POPRAVEK ZA VIDNOST AVATARJA ---
-            // Dodamo 2px bel rob, da bo avatar izstopal na temnem ozadju.
-            avatar.getStyle().set("border", "2px solid var(--lumo-primary-contrast-color)");
-            avatar.getStyle().set("color", "black");
-            avatar.getStyle().set("background-color", "white");
-            // ---------------------------------------------
 
             ContextMenu userMenu = new ContextMenu();
             userMenu.setTarget(avatar);
@@ -99,21 +80,59 @@ public class MainLayout extends AppLayout {
             userMenu.add(new Hr());
             userMenu.addItem("Odjava", e -> authenticatedUser.logout());
 
-            HorizontalLayout userInfo = new HorizontalLayout(avatar, userMenu);
-            userInfo.setAlignItems(FlexComponent.Alignment.CENTER);
-
-            HorizontalLayout header = new HorizontalLayout(logo, navIcons);
-            header.setAlignItems(FlexComponent.Alignment.CENTER);
-            header.setSpacing(true);
-
-            HorizontalLayout fullBar = new HorizontalLayout(header, userInfo);
-            fullBar.setWidthFull();
-            fullBar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-            fullBar.setAlignItems(FlexComponent.Alignment.CENTER);
-            fullBar.getStyle().set("padding", "0 1rem").set("height", "var(--lumo-size-xl)");
-
-            addToNavbar(fullBar);
+            header.add(avatar);
         }
+
+        return header;
+    }
+
+    private Component createDrawerContent() {
+        H2 appName = new H2(appInfoProperties.getName());
+        appName.addClassNames("text-l", "m-0", "px-s");
+
+        SideNav nav = createNavigation();
+
+        // --- POPRAVEK JE TUKAJ ---
+        // Ustvarimo SideNavItem z labelom, potjo in ikono
+        SideNavItem calendarNavItem = new SideNavItem("Naroči se na koledar", "/public/calendar.ics", VaadinIcon.CALENDAR_CLOCK.create());
+        // Dodamo atribut 'download', da brskalnik sproži prenos datoteke
+        calendarNavItem.getElement().setAttribute("download", true);
+        // Dodamo ključni atribut 'router-ignore', ki Vaadin usmerjevalniku prepreči obravnavo te povezave
+        calendarNavItem.getElement().setAttribute("router-ignore", "");
+        // --- KONEC POPRAVKA ---
+
+        VerticalLayout drawerLayout = new VerticalLayout(appName, nav, new Hr(), calendarNavItem);
+        drawerLayout.setSizeFull();
+        drawerLayout.setPadding(false);
+        drawerLayout.setSpacing(false);
+        drawerLayout.getThemeList().set("spacing-s", true);
+        drawerLayout.setAlignItems(FlexComponent.Alignment.STRETCH);
+
+        return drawerLayout;
+    }
+
+    private SideNav createNavigation() {
+        SideNav nav = new SideNav();
+
+
+        Optional<User> maybeUser = authenticatedUser.get();
+        if (maybeUser.isPresent()) {
+            User user = maybeUser.get();
+            Set<String> userRoles = user.getRoles();
+
+            for (AppMenuProperties.MenuItemInfo item : menuProperties.getItems()) {
+                if (isAccessGranted(item.getView(), userRoles)) {
+                    try {
+                        Class<? extends Component> viewClass = (Class<? extends Component>) Class.forName(item.getView());
+                        SideNavItem navItem = new SideNavItem(item.getTooltip(), viewClass, VaadinIcon.valueOf(item.getIcon()).create());
+                        nav.addItem(navItem);
+                    } catch (ClassNotFoundException | IllegalArgumentException e) {
+                        System.err.println("Meni-item error: " + e.getMessage());
+                    }
+                }
+            }
+        }
+        return nav;
     }
 
     private boolean isAccessGranted(String viewClassName, Set<String> userRoles) {
@@ -124,16 +143,20 @@ public class MainLayout extends AppLayout {
         return !Collections.disjoint(userRoles, requiredRoles);
     }
 
-    private RouterLink createIconLink(VaadinIcon icon, String tooltip, Class<? extends Component> navigationTarget) {
-        Icon vaadinIcon = icon.create();
-        vaadinIcon.setSize("24px");
-        vaadinIcon.getStyle().set("color", "white");
-        vaadinIcon.getStyle().set("cursor", "pointer");
-        vaadinIcon.getElement().setProperty("title", tooltip);
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
+        viewTitle.setText(getCurrentPageTitle(event));
 
-        RouterLink link = new RouterLink(navigationTarget);
-        link.getStyle().set("display", "flex").set("align-items", "center").set("height", "100%");
-        link.add(vaadinIcon);
-        return link;
+     //   if (getElement().getProperty("overlay", false)) {
+            setDrawerOpened(false);
+       // }
+    }
+
+    private String getCurrentPageTitle(AfterNavigationEvent event) {
+        return event.getActiveChain().stream()
+                .filter(component -> component.getClass().isAnnotationPresent(PageTitle.class))
+                .map(component -> component.getClass().getAnnotation(PageTitle.class).value())
+                .findFirst()
+                .orElse("");
     }
 }

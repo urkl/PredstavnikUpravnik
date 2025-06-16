@@ -1,3 +1,4 @@
+// FILE: src/main/java/net/urosk/upravnikpredstavnik/ui/components/CaseFormDialog.java
 package net.urosk.upravnikpredstavnik.ui.components;
 
 import com.vaadin.flow.component.Component;
@@ -87,7 +88,7 @@ public class CaseFormDialog extends Dialog {
         Tab filesTab = new Tab("Datoteke");
         Tabs tabs = new Tabs(detailsTab, subtasksTab, filesTab);
         Div pages = new Div(detailsTabContent, subtasksTabContent, filesTabContent);
-        pages.setSizeFull(); // Dovolimo, da se vsebina razširi
+        pages.setSizeFull();
         pages.getStyle().set("padding-top", "var(--lumo-space-m)");
 
         subtasksTabContent.setVisible(false);
@@ -97,7 +98,7 @@ public class CaseFormDialog extends Dialog {
             subtasksTabContent.setVisible(event.getSelectedTab() == subtasksTab);
             filesTabContent.setVisible(event.getSelectedTab() == filesTab);
         });
-        mainLayout.expand(pages); // Ključno: stran zavihka naj zasede ves preostali prostor
+        mainLayout.expand(pages);
 
         mainLayout.add(tabs, pages);
         add(mainLayout);
@@ -111,6 +112,7 @@ public class CaseFormDialog extends Dialog {
     }
 
     private VerticalLayout createDetailsTabContent(AppProcessProperties processProperties, BuildingRepository buildingRepository, UserRepository userRepository) {
+        // ... koda ostane nespremenjena ...
         RadioButtonGroup<String> status = new RadioButtonGroup<>("Status");
         RadioButtonGroup<Priority> priority = new RadioButtonGroup<>("Prioriteta");
         TextField title = new TextField("Naslov");
@@ -154,10 +156,98 @@ public class CaseFormDialog extends Dialog {
     private VerticalLayout createSubtasksTabContent() {
         subtasksLayout.setPadding(false);
         subtasksLayout.setSpacing(true);
-        subtasksLayout.setSizeFull(); // === POPRAVEK TUKAJ ===
-
+        subtasksLayout.setSizeFull();
         refreshSubtasks();
         return subtasksLayout;
+    }
+
+    private void refreshSubtasks() {
+        subtasksLayout.removeAll();
+        ProgressBar progressBar = new ProgressBar();
+        progressBar.setWidthFull();
+        updateProgressBar(progressBar, currentCase);
+        if (currentCase.getSubtasks() != null && !currentCase.getSubtasks().isEmpty()) {
+            subtasksLayout.add(progressBar);
+        }
+        VerticalLayout checkboxLayout = new VerticalLayout();
+        checkboxLayout.setPadding(false);
+        checkboxLayout.setSpacing(false);
+        if (currentCase.getSubtasks() != null) {
+            currentCase.getSubtasks().forEach(subtask -> checkboxLayout.add(createSubtaskRow(subtask, progressBar)));
+        }
+        HorizontalLayout addControls = createAddSubtaskControls(checkboxLayout, progressBar);
+        subtasksLayout.add(checkboxLayout, addControls);
+    }
+
+    // --- SPREMEMBA: Metoda sedaj ustvari celotno vrstico z gumbom za brisanje ---
+    private Component createSubtaskRow(Subtask subtask, ProgressBar progressBar) {
+        Checkbox checkbox = new Checkbox(subtask.getTask(), subtask.isCompleted());
+        checkbox.addValueChangeListener(event -> {
+            subtask.setCompleted(event.getValue());
+            updateProgressBar(progressBar, currentCase);
+        });
+
+        Button deleteButton = new Button(new Icon(VaadinIcon.TRASH), e -> confirmDeleteSubtask(subtask));
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
+        deleteButton.setTooltipText("Izbriši podnalogo");
+
+        HorizontalLayout subtaskRow = new HorizontalLayout(checkbox, deleteButton);
+        subtaskRow.setWidthFull();
+        subtaskRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        subtaskRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        subtaskRow.expand(checkbox);
+        return subtaskRow;
+    }
+
+    // --- NOVO: Metoda za potrditev in brisanje podnaloge ---
+    private void confirmDeleteSubtask(Subtask subtask) {
+        new ConfirmDialog("Potrditev brisanja",
+                "Ali res želite izbrisati podnalogo '" + subtask.getTask() + "'? Sprememba bo shranjena s klikom na gumb 'Shrani'.",
+                "Izbriši", e -> deleteSubtask(subtask),
+                "Prekliči", e -> {}
+        ).open();
+    }
+
+    private void deleteSubtask(Subtask subtask) {
+        if (currentCase.getSubtasks() != null) {
+            // SPREMEMBA: Odstranimo samo iz seznama v pomnilniku. Shranjevanje se zgodi ob kliku na glavni gumb "Shrani".
+            currentCase.getSubtasks().remove(subtask);
+            Notification.show("Podnaloga označena za brisanje.");
+            refreshSubtasks(); // Osvežimo samo prikaz v dialogu
+        }
+    }
+
+    private HorizontalLayout createAddSubtaskControls(VerticalLayout checkboxLayout, ProgressBar progressBar) {
+        TextField newSubtaskField = new TextField();
+        newSubtaskField.setPlaceholder("Nova podnaloga...");
+        Button addButton = new Button("Dodaj", new Icon(VaadinIcon.PLUS), e -> {
+            String taskText = newSubtaskField.getValue();
+            if (taskText != null && !taskText.trim().isEmpty()) {
+                if (currentCase.getSubtasks() == null) currentCase.setSubtasks(new ArrayList<>());
+                Subtask newSubtask = new Subtask(taskText, false);
+                currentCase.getSubtasks().add(newSubtask);
+
+                checkboxLayout.add(createSubtaskRow(newSubtask, progressBar));
+                updateProgressBar(progressBar, currentCase);
+                newSubtaskField.clear();
+            }
+        });
+        HorizontalLayout layout = new HorizontalLayout(newSubtaskField, addButton);
+        layout.setAlignItems(FlexComponent.Alignment.BASELINE);
+        return layout;
+    }
+
+    // ... preostanek datoteke ostane enak ...
+
+    private void updateProgressBar(ProgressBar progressBar, Case caseItem) {
+        if (caseItem.getSubtasks() == null || caseItem.getSubtasks().isEmpty()) {
+            progressBar.setVisible(false);
+        } else {
+            progressBar.setVisible(true);
+            long total = caseItem.getSubtasks().size();
+            long completed = caseItem.getSubtasks().stream().filter(Subtask::isCompleted).count();
+            progressBar.setValue((double) completed / total);
+        }
     }
 
     private VerticalLayout createFilesTabContent() {
@@ -207,62 +297,6 @@ public class CaseFormDialog extends Dialog {
         });
         dialog.add(new VerticalLayout(commentField, confirmButton));
         dialog.open();
-    }
-
-    private void refreshSubtasks() {
-        subtasksLayout.removeAll();
-        ProgressBar progressBar = new ProgressBar();
-        progressBar.setWidthFull();
-        updateProgressBar(progressBar, currentCase);
-        if (currentCase.getSubtasks() != null && !currentCase.getSubtasks().isEmpty()) {
-            subtasksLayout.add(progressBar);
-        }
-        VerticalLayout checkboxLayout = new VerticalLayout();
-        checkboxLayout.setPadding(false);
-        checkboxLayout.setSpacing(false);
-        if (currentCase.getSubtasks() != null) {
-            currentCase.getSubtasks().forEach(subtask -> checkboxLayout.add(createSubtaskCheckbox(subtask, progressBar)));
-        }
-        HorizontalLayout addControls = createAddSubtaskControls(checkboxLayout, progressBar);
-        subtasksLayout.add(checkboxLayout, addControls);
-    }
-
-    private Checkbox createSubtaskCheckbox(Subtask subtask, ProgressBar progressBar) {
-        Checkbox checkbox = new Checkbox(subtask.getTask(), subtask.isCompleted());
-        checkbox.addValueChangeListener(event -> {
-            subtask.setCompleted(event.getValue());
-            updateProgressBar(progressBar, currentCase);
-        });
-        return checkbox;
-    }
-
-    private HorizontalLayout createAddSubtaskControls(VerticalLayout checkboxLayout, ProgressBar progressBar) {
-        TextField newSubtaskField = new TextField();
-        newSubtaskField.setPlaceholder("Nova podnaloga...");
-        Button addButton = new Button("Dodaj", new Icon(VaadinIcon.PLUS), e -> {
-            String taskText = newSubtaskField.getValue();
-            if (taskText != null && !taskText.trim().isEmpty()) {
-                if (currentCase.getSubtasks() == null) currentCase.setSubtasks(new ArrayList<>());
-                currentCase.getSubtasks().add(new Subtask(taskText, false));
-                checkboxLayout.add(createSubtaskCheckbox(currentCase.getSubtasks().get(currentCase.getSubtasks().size() - 1), progressBar));
-                updateProgressBar(progressBar, currentCase);
-                newSubtaskField.clear();
-            }
-        });
-        HorizontalLayout layout = new HorizontalLayout(newSubtaskField, addButton);
-        layout.setAlignItems(FlexComponent.Alignment.BASELINE);
-        return layout;
-    }
-
-    private void updateProgressBar(ProgressBar progressBar, Case caseItem) {
-        if (caseItem.getSubtasks() == null || caseItem.getSubtasks().isEmpty()) {
-            progressBar.setVisible(false);
-        } else {
-            progressBar.setVisible(true);
-            long total = caseItem.getSubtasks().size();
-            long completed = caseItem.getSubtasks().stream().filter(Subtask::isCompleted).count();
-            progressBar.setValue((double) completed / total);
-        }
     }
 
     private void configureFilesGrid() {

@@ -118,7 +118,11 @@ public class ManagerKanbanView extends VerticalLayout {
         // SPREMEMBA: Naložimo samo zadeve, ki niso zbrisane
         List<Case> cases = caseRepository.findAllByStatusNot("DELETED");
         if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-            // ... logika iskanja ostane enaka
+            String lowerCaseFilter = searchTerm.toLowerCase().trim();
+            cases = cases.stream().filter(c ->
+                    (c.getTitle() != null && c.getTitle().toLowerCase().contains(lowerCaseFilter)) ||
+                    (c.getDescription() != null && c.getDescription().toLowerCase().contains(lowerCaseFilter))
+            ).collect(Collectors.toList());
         }
         cases.forEach(caseItem -> {
             VerticalLayout column = statusColumns.get(caseItem.getStatus());
