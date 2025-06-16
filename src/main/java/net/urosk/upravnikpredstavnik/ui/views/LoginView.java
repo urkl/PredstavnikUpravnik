@@ -10,6 +10,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import net.urosk.upravnikpredstavnik.config.AppInfoProperties;
 import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 
 @Route("login")
@@ -20,19 +21,19 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
     private static final String OAUTH_URL = "/oauth2/authorization/google";
     private final AuthenticatedUser authenticatedUser;
 
-    public LoginView(AuthenticatedUser authenticatedUser) {
+    public LoginView(AuthenticatedUser authenticatedUser, AppInfoProperties appInfoProperties) {
         this.authenticatedUser = authenticatedUser;
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.START);
 
         H1 title = new H1();
-        Span titleBadge = new Span("Dobrodošli v BlokApp!");
+        Span titleBadge = new Span("Dobrodošli v "+appInfoProperties.getName());
         titleBadge.addClassName("title-badge");
         title.add(titleBadge);
 
         // NOV DODATEK: Podnapis (tagline)
-        Paragraph tagline = new Paragraph("Aplikacija za urejeno in prijazno komunikacijo med stanovalci, predstavniki in upravniki.");
+        Paragraph tagline = new Paragraph(appInfoProperties.getTagline());
         tagline.getStyle()
                 .set("color", "white") // Bela barva teksta za dober kontrast
                 .set("text-shadow", "1px 1px 2px black") // Majhna senca za boljši izstop na sliki ozadja
