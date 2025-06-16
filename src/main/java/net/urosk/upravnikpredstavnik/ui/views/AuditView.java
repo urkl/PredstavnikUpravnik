@@ -97,6 +97,9 @@ public class AuditView extends VerticalLayout {
             case "ZBRISANA DATOTEKA" -> new Icon(VaadinIcon.FILE_REMOVE);
             case "DODAJANJE PODNALOGE" -> new Icon(VaadinIcon.LIST_UL);
             case "POSODOBITEV PODNALOGE" -> new Icon(VaadinIcon.CHECK_SQUARE_O);
+            case "ZADEVA ZBRISANA" -> new Icon(VaadinIcon.TRASH); // <-- DODANO
+            case "ZADEVA OBNOVLJENA" -> new Icon(VaadinIcon.RECYCLE); // <-- DODANO
+
             default -> new Icon(VaadinIcon.INFO_CIRCLE);
         };
     }

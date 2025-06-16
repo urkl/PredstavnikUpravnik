@@ -24,7 +24,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         this.authenticatedUser = authenticatedUser;
         setSizeFull();
         setAlignItems(Alignment.CENTER);
-        setJustifyContentMode(JustifyContentMode.CENTER);
+        setJustifyContentMode(JustifyContentMode.START);
 
         H1 title = new H1();
         Span titleBadge = new Span("Dobrodošli v BlokApp!");

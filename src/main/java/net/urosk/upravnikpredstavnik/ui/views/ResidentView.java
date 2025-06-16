@@ -180,7 +180,7 @@ public class ResidentView extends VerticalLayout {
         maybeUser.ifPresent(user -> {
             List<Case> cases;
 
-                cases = caseRepository.findFirst10ByAuthorIdOrderByCreatedDateDesc(user.getId());
+                cases = caseRepository.findFirst10ByAuthorIdAndStatusNotOrderByCreatedDateDesc(user.getId(),"DELETED");
 
             if (cases.isEmpty()) {
                 casesLayout.add(new Span("Nimate še nobene odprte zadeve."));

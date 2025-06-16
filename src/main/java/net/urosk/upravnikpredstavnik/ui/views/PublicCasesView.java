@@ -57,9 +57,9 @@ public class PublicCasesView extends VerticalLayout {
     }
 
     private void loadCases() {
-        Pageable pageable = PageRequest.of(currentPage, PAGE_SIZE, Sort.by("creationDate").descending());
-        Page<Case> casePage = caseRepository.findAll( pageable);
-
+        Pageable pageable = PageRequest.of(currentPage, PAGE_SIZE, Sort.by("lastModifiedDate").descending());
+        Page<Case> casePage = caseRepository.findByStatus("ZAKLJUCENO", pageable);
+        // ... preostanek metode ostane enak
         if (casePage.hasContent()) {
             casePage.getContent().forEach(c -> caseCardsLayout.add(createCaseCard(c)));
             currentPage++;

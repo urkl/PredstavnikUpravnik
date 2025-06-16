@@ -12,6 +12,8 @@ public interface CaseRepository extends MongoRepository<Case, String> {
     List<Case> findByStatus(String status);
     List<Case> findByAuthorId(String authorId);
     List<Case> findFirst10ByAuthorIdOrderByCreatedDateDesc(String authorId);
+    List<Case> findAllByStatusNot(String status);
+    List<Case> findFirst10ByAuthorIdAndStatusNotOrderByCreatedDateDesc(String authorId, String status);
     Page<Case> findByStatus(String status, Pageable pageable);
 
 }

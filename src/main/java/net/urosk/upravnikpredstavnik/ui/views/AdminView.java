@@ -20,6 +20,7 @@ import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
+import net.urosk.upravnikpredstavnik.config.AppProcessProperties;
 import net.urosk.upravnikpredstavnik.data.entity.Building;
 import net.urosk.upravnikpredstavnik.data.entity.Case;
 import net.urosk.upravnikpredstavnik.data.entity.User;
@@ -27,8 +28,11 @@ import net.urosk.upravnikpredstavnik.data.repository.BuildingRepository;
 import net.urosk.upravnikpredstavnik.data.repository.CaseRepository;
 import net.urosk.upravnikpredstavnik.data.repository.UserRepository;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
+import net.urosk.upravnikpredstavnik.security.AuthenticatedUser;
 import net.urosk.upravnikpredstavnik.service.ActiveUserService;
+import net.urosk.upravnikpredstavnik.service.AuditService;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -38,44 +42,57 @@ import java.util.stream.Collectors;
 @PageTitle("Administracija")
 @PermitAll
 public class AdminView extends VerticalLayout {
-    private final ActiveUserService activeUserService; // <-- NOVO POLJE
-
-    // Postavitev za nov zavihek
-    private final VerticalLayout activeUsersLayout = new VerticalLayout();
-    private final Grid<User> activeUsersGrid = new Grid<>(User.class);
+    private final ActiveUserService activeUserService;
     private final UserRepository userRepository;
     private final BuildingRepository buildingRepository;
     private final CaseRepository caseRepository;
     private final AppSecurityProperties appSecurityProperties;
+    private final AppProcessProperties appProcessProperties;
+    private final AuditService auditService;
+    private final AuthenticatedUser authenticatedUser;
 
-    // Komponente za upravljanje uporabnikov
+
+    // Layouts for tabs
+    private final VerticalLayout userManagementLayout = new VerticalLayout();
+    private final VerticalLayout buildingManagementLayout = new VerticalLayout();
+    private final VerticalLayout activeUsersLayout = new VerticalLayout();
+    private final VerticalLayout deletedCasesLayout = new VerticalLayout();
+
+    // Grids
     private final Grid<User> userGrid = new Grid<>(User.class);
+    private final Grid<Building> buildingGrid = new Grid<>(Building.class);
+    private final Grid<User> activeUsersGrid = new Grid<>(User.class);
+    private final Grid<Case> deletedCasesGrid = new Grid<>(Case.class);
+
+    // Binders
+    private final Binder<User> userBinder = new Binder<>(User.class);
+    private final Binder<Building> buildingBinder = new Binder<>(Building.class);
+
+    // User management components
     private final MultiSelectComboBox<String> userRolesSelect = new MultiSelectComboBox<>("Vloge uporabnika");
     private final MultiSelectComboBox<Building> userManagedBuildingsSelect = new MultiSelectComboBox<>("Upravljani objekti");
     private final Button saveUserButton = new Button("Shrani vloge in objekte");
-    private final Binder<User> userBinder = new Binder<>(User.class);
 
-    // Komponente za upravljanje objektov
-    private final Grid<Building> buildingGrid = new Grid<>(Building.class);
+    // Building management components
     private final TextField buildingNameField = new TextField("Ime objekta");
     private final TextField buildingAddressField = new TextField("Naslov objekta");
     private final Button saveBuildingButton = new Button("Shrani objekt");
     private final Button deleteBuildingButton = new Button("Izbriši objekt");
     private final Button newBuildingButton = new Button("Nov objekt");
-    private final Binder<Building> buildingBinder = new Binder<>(Building.class);
 
-    // Zavihki in postavitve
+    // Tabs
     private final Tabs mainTabs = new Tabs();
-    private final VerticalLayout userManagementLayout = new VerticalLayout();
-    private final VerticalLayout buildingManagementLayout = new VerticalLayout();
 
 
-    public AdminView(ActiveUserService activeUserService, UserRepository userRepository, BuildingRepository buildingRepository, CaseRepository caseRepository, AppSecurityProperties appSecurityProperties) {
+    public AdminView(ActiveUserService activeUserService, UserRepository userRepository, BuildingRepository buildingRepository, CaseRepository caseRepository, AppSecurityProperties appSecurityProperties, AppProcessProperties appProcessProperties, AuditService auditService, AuthenticatedUser authenticatedUser) {
         this.activeUserService = activeUserService;
         this.userRepository = userRepository;
         this.buildingRepository = buildingRepository;
         this.caseRepository = caseRepository;
         this.appSecurityProperties = appSecurityProperties;
+        this.appProcessProperties = appProcessProperties;
+        this.auditService = auditService;
+        this.authenticatedUser = authenticatedUser;
 
         setSizeFull();
         setPadding(true);
@@ -83,40 +100,99 @@ public class AdminView extends VerticalLayout {
         H2 title = new H2("Administracija sistema");
         title.addClassName("title");
 
-        // Konfiguracija vsebine
         configureTabs();
         configureUserManagement();
         configureBuildingManagement();
-        configureActiveUsersManagement(); // <-- Klic nove metode za konfiguracijo
+        configureActiveUsersManagement();
+        configureDeletedCasesManagement(); // <-- DODAN KLIC
 
-        // Vsebinski kontejner, ki drži postavitve, ki se preklapljajo
-        VerticalLayout contentContainer = new VerticalLayout(userManagementLayout, buildingManagementLayout);
+        VerticalLayout contentContainer = new VerticalLayout(userManagementLayout, buildingManagementLayout, activeUsersLayout, deletedCasesLayout);
         contentContainer.setPadding(false);
         contentContainer.setSpacing(false);
         contentContainer.setSizeFull();
         contentContainer.addClassName("layout");
 
-        // Dodajanje komponent v glavni pogled
         add(title, mainTabs, contentContainer);
-
-        // Nastavitev začetne vsebine glede na izbran zavihek
         setContentForSelectedTab(mainTabs.getSelectedTab());
     }
 
     private void configureTabs() {
-        Tab userTab = new Tab("Upravljanje uporabnikov");
-        Tab buildingTab = new Tab("Upravljanje objektov");
-        Tab activeUsersTab = new Tab("Aktivni uporabniki"); // <-- NOV ZAVIHEK
-        mainTabs.addClassName("layout");
+        Tab userTab = new Tab("Uporabniki");
+        Tab buildingTab = new Tab("Objekti");
+        Tab activeUsersTab = new Tab("Aktivni uporabniki");
+        Tab deletedCasesTab = new Tab("Zbrisane zadeve"); // <-- NOV ZAVIHEK
 
-
-        //
-        mainTabs.add(userTab, buildingTab, activeUsersTab);
+        mainTabs.add(userTab, buildingTab, activeUsersTab, deletedCasesTab);
         mainTabs.setSelectedTab(userTab);
         mainTabs.addSelectedChangeListener(event -> setContentForSelectedTab(event.getSelectedTab()));
         mainTabs.setWidthFull();
+        mainTabs.addClassName("layout");
     }
 
+    private void setContentForSelectedTab(Tab selectedTab) {
+        userManagementLayout.setVisible(false);
+        buildingManagementLayout.setVisible(false);
+        activeUsersLayout.setVisible(false);
+        deletedCasesLayout.setVisible(false); // <-- SKRIJEMO NOV LAYOUT
+
+        String selectedLabel = selectedTab.getLabel();
+        if ("Uporabniki".equals(selectedLabel)) {
+            userManagementLayout.setVisible(true);
+            refreshUserGrid();
+        } else if ("Objekti".equals(selectedLabel)) {
+            buildingManagementLayout.setVisible(true);
+            refreshBuildingGrid();
+        } else if ("Aktivni uporabniki".equals(selectedLabel)) {
+            activeUsersLayout.setVisible(true);
+            refreshActiveUsersGrid();
+        } else if ("Zbrisane zadeve".equals(selectedLabel)) {
+            deletedCasesLayout.setVisible(true); // <-- PRIKAŽEMO NOV LAYOUT
+            refreshDeletedCasesGrid();
+        }
+    }
+
+    private void configureDeletedCasesManagement() {
+        deletedCasesLayout.setPadding(false);
+        deletedCasesLayout.setSpacing(true);
+
+        H2 sectionTitle = new H2("Zbrisane zadeve");
+        deletedCasesGrid.setColumns("title");
+        deletedCasesGrid.addColumn(c -> c.getAuthor() != null ? c.getAuthor().getName() : "Neznan avtor")
+                .setHeader("Avtor").setSortable(true);
+        deletedCasesGrid.addColumn(c -> c.getLastModifiedDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))
+                .setHeader("Datum izbrisa").setSortable(true);
+        deletedCasesGrid.addComponentColumn(this::createRestoreButton).setHeader("Dejanja");
+        deletedCasesGrid.getColumns().forEach(col -> col.setAutoWidth(true));
+
+        deletedCasesLayout.add(sectionTitle, deletedCasesGrid);
+    }
+
+    private Button createRestoreButton(Case caseItem) {
+        Button restoreButton = new Button("Povrni", new Icon(VaadinIcon.RECYCLE), click -> {
+            ConfirmDialog dialog = new ConfirmDialog(
+                    "Potrditev obnove",
+                    "Ali res želite obnoviti zadevo '" + caseItem.getTitle() + "'? Status bo postavljen na 'Predlog'.",
+                    "Obnovi", e -> {
+                caseItem.setStatus(appProcessProperties.getDefaultStatus());
+                caseRepository.save(caseItem);
+                auditService.log("OBNOVITEV ZADEVE", Case.class, caseItem.getId(), "Zadeva obnovljena", authenticatedUser.get().map(User::getEmail).orElse("SYSTEM"));
+                Notification.show("Zadeva obnovljena.", 2000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                refreshDeletedCasesGrid();
+            },
+                    "Prekliči", e -> {}
+            );
+            dialog.setConfirmButtonTheme(ButtonVariant.LUMO_SUCCESS.getVariantName());
+            dialog.open();
+        });
+        restoreButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_TERTIARY_INLINE);
+        return restoreButton;
+    }
+
+    private void refreshDeletedCasesGrid() {
+        deletedCasesGrid.setItems(caseRepository.findByStatus("DELETED"));
+    }
+
+    // ... OSTAJAJOČA KODA IZ PREJŠNJEGA ODGOVORA ...
     private void configureActiveUsersManagement() {
         activeUsersLayout.setPadding(false);
         activeUsersLayout.setSpacing(true);
@@ -137,24 +213,6 @@ public class AdminView extends VerticalLayout {
     private void refreshActiveUsersGrid() {
         activeUsersGrid.setItems(activeUserService.getActiveUsers());
     }
-    private void setContentForSelectedTab(Tab selectedTab) {
-        userManagementLayout.setVisible(false);
-        buildingManagementLayout.setVisible(false);
-        activeUsersLayout.setVisible(false); // <-- Skrijemo nov layout
-
-        if (selectedTab.getLabel().equals("Upravljanje uporabnikov")) {
-            userManagementLayout.setVisible(true);
-            refreshUserGrid();
-        } else if (selectedTab.getLabel().equals("Upravljanje objektov")) {
-            buildingManagementLayout.setVisible(true);
-            refreshBuildingGrid();
-        } else if (selectedTab.getLabel().equals("Aktivni uporabniki")) {
-            activeUsersLayout.setVisible(true); // <-- Prikažemo nov layout
-            refreshActiveUsersGrid();
-        }
-    }
-
-
 
     private void configureUserManagement() {
         userManagementLayout.setPadding(false);
@@ -189,7 +247,6 @@ public class AdminView extends VerticalLayout {
 
         userManagementLayout.add(userGrid, userFormLayout);
 
-        // Formo na začetku skrijemo
         editUser(null);
     }
 
@@ -251,7 +308,6 @@ public class AdminView extends VerticalLayout {
 
         buildingManagementLayout.add(buildingGrid, buildingFormLayout);
 
-        // Formo na začetku skrijemo
         editBuilding(null);
     }
 
@@ -272,7 +328,6 @@ public class AdminView extends VerticalLayout {
     private void saveBuilding() {
         Building building = buildingBinder.getBean();
         if (building != null && buildingBinder.writeBeanIfValid(building)) {
-            // Preverimo, če objekt s tem imenom že obstaja
             if (building.getId() == null && buildingRepository.findByName(building.getName()).isPresent()) {
                 Notification.show("Objekt z imenom '" + building.getName() + "' že obstaja.", 4000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
@@ -288,7 +343,6 @@ public class AdminView extends VerticalLayout {
         Building building = buildingBinder.getBean();
         if (building == null || building.getId() == null) return;
 
-        // Preverimo, če je objekt povezan z uporabniki ali zadevami
         boolean isUsedByUser = userRepository.findAll().stream().anyMatch(u -> u.getManagedBuildings().contains(building));
         boolean isUsedInCase = caseRepository.findAll().stream().anyMatch(c -> c.getBuildings().contains(building));
 
