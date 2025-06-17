@@ -11,12 +11,14 @@ import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 import net.urosk.upravnikpredstavnik.config.AppInfoProperties;
 import net.urosk.upravnikpredstavnik.config.AppMenuProperties;
 import net.urosk.upravnikpredstavnik.config.AppSecurityProperties;
@@ -57,14 +59,15 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         DrawerToggle toggle = new DrawerToggle();
         toggle.setAriaLabel("Menu toggle");
         toggle.setTooltipText("Meni");
+        toggle.getElement().setAttribute("theme", "dark");
 
-        viewTitle.getStyle().set("font-size", "var(--lumo-font-size-l)").set("margin", "0");
+        viewTitle.getStyle().set("font-size", "var(--lumo-font-size-l)");
 
         HorizontalLayout header = new HorizontalLayout(toggle, viewTitle);
         header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         header.expand(viewTitle);
         header.setWidth("100%");
-        header.addClassNames("py-0", "px-m");
+        header.setPadding(false);
 
         Optional<User> maybeUser = authenticatedUser.get();
         if (maybeUser.isPresent()) {
@@ -92,16 +95,18 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
         SideNav nav = createNavigation();
 
-        // --- POPRAVEK JE TUKAJ ---
-        // Ustvarimo SideNavItem z labelom, potjo in ikono
-        SideNavItem calendarNavItem = new SideNavItem("Naroči se na koledar", "/public/calendar.ics", VaadinIcon.CALENDAR_CLOCK.create());
-        // Dodamo atribut 'download', da brskalnik sproži prenos datoteke
-        calendarNavItem.getElement().setAttribute("download", true);
-        // Dodamo ključni atribut 'router-ignore', ki Vaadin usmerjevalniku prepreči obravnavo te povezave
-        calendarNavItem.getElement().setAttribute("router-ignore", "");
-        // --- KONEC POPRAVKA ---
+        VerticalLayout navLayout = new VerticalLayout(appName, nav);
+        navLayout.add(new Hr());
+        Scroller scroller = new Scroller(navLayout);
+        scroller.setHeightFull();
+        scroller.setClassName(LumoUtility.Padding.SMALL);
+        scroller.getElement().setAttribute("theme", "dark");
 
-        VerticalLayout drawerLayout = new VerticalLayout(appName, nav, new Hr(), calendarNavItem);
+        SideNavItem calendarNavItem = new SideNavItem("Naroči se na koledar", "/public/calendar.ics", VaadinIcon.CALENDAR_CLOCK.create());
+        calendarNavItem.getElement().setAttribute("download", true);
+        calendarNavItem.getElement().setAttribute("router-ignore", "");
+        nav.addItem(calendarNavItem);
+        VerticalLayout drawerLayout = new VerticalLayout(scroller);
         drawerLayout.setSizeFull();
         drawerLayout.setPadding(false);
         drawerLayout.setSpacing(false);
@@ -113,7 +118,8 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     private SideNav createNavigation() {
         SideNav nav = new SideNav();
-
+        nav.setClassName(LumoUtility.Padding.SMALL);
+        nav.getElement().setAttribute("theme", "dark");
 
         Optional<User> maybeUser = authenticatedUser.get();
         if (maybeUser.isPresent()) {

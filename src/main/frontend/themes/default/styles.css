@@ -5,7 +5,15 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@500;700&display=swap');
 
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap');
 
+:root {
+    --lumo-font-family:'Ubuntu', 'Lato' , 'Montserrat', 'Roboto', sans-serif;
+}
 html {
     /* Nastavite osnovno pisavo za celotno stran */
     /*font-family: 'Lato', sans-serif;*/
@@ -13,7 +21,7 @@ html {
 
     height: 100%;
 }
-.title { /* Predpostavljam, da se ta razred uporablja za naslove */
+.title {
     display: inline-block; /* Omogoča uporabo paddinga in marginov, ohranja flow teksta */
     background-color: rgba(0, 0, 0, 0.5); /* Poltransparentno črno ozadje */
     color: white; /* Bel tekst na črnem ozadju */
@@ -33,16 +41,11 @@ html {
     padding: 1.5rem;
 }
 
-/*!* Eksplicitno nastavite pisavo za naslove (H1, H2, H3...) *!*/
-/*h1, h2, h3, h4, h5, h6 {*/
-/*    font-family: 'Montserrat', sans-serif;*/
-/*}*/
+
 
 body {
-    /* Naloži sliko iz mape images */
-    background-image: url('images/background.png');
 
-    /* ... ostale nastavitve za ozadje ... */
+    background-image: url('images/background.png');
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
@@ -51,32 +54,6 @@ body {
     margin: 0;
 }
 
-
-/*html {*/
-/*    font-family: 'Fredoka', sans-serif;*/
-/*    height: 100%;*/
-/*}*/
-/*body {*/
-/*    !* Naloži sliko iz mape images *!*/
-/*    background-image: url('images/background.png');*/
-
-/*    !* Poskrbi, da slika pokrije celotno ozadje *!*/
-/*    background-size: cover;*/
-
-/*    !* Centrira sliko *!*/
-/*    background-position: center center;*/
-
-/*    !* Prepreči ponavljanje slike *!*/
-/*    background-repeat: no-repeat;*/
-
-/*    !* Fiksira ozadje, da se ne premika med drsenjem vsebine *!*/
-/*    background-attachment: fixed;*/
-
-/*    !* Poskrbi, da višina telesa zasede celoten zaslon *!*/
-/*    height: 100vh;*/
-/*    margin: 0;*/
-/*}*/
-/* ... ostali stili ... */
 
 /* Stil za glavno postavitev */
 .main-layout::part(navbar) {
@@ -111,8 +88,6 @@ body {
     box-shadow: var(--lumo-box-shadow-m);
 }
 
-
-
 .kanban-column {
     min-width: 320px;
 }
@@ -131,27 +106,5 @@ body {
 
 
 
-.main-layout-dark-navbar::part(navbar) {
-    padding: 0;
-    /* SPREMEMBA: Uporabimo temnejšo barvo */
-    background-color: #1C2833;
-    /* DODATEK: Spodnji rob za lepši prehod */
-    border-bottom: 1px solid hsla(214, 40%, 90%, 0.2);
-    box-sizing: border-box; /* Pomembno, da se rob vključi v višino */
-}
 
 
-.main-layout-dark-navbar::part(navbar) {
-    padding: 0;
-    /* SPREMEMBA: Uporabimo temnejšo barvo */
-    background-color: #1C2833;
-    /* DODATEK: Spodnji rob za lepši prehod */
-    border-bottom: 1px solid hsla(214, 40%, 90%, 0.2);
-    box-sizing: border-box; /* Pomembno, da se rob vključi v višino */
-}
-
-/* DODATEK: Efekt ob premiku miške čez ikono v meniju */
-.main-layout-dark-navbar a:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-}
